@@ -1,0 +1,246 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* E-Document NIC System Design System */
+
+@layer base {
+  :root {
+    /* Core System Colors */
+    --background: 0 0% 100%;
+    --foreground: 220 13% 18%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 13% 18%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 18%;
+
+    /* Brand Colors - Orange Accent System */
+    --primary: 16 100% 55%; /* #ff5821 */
+    --primary-foreground: 0 0% 98%;
+    --primary-hover: 16 100% 50%;
+    --primary-light: 16 100% 95%;
+
+    /* Government Official Colors */
+    --secondary: 210 20% 98%;
+    --secondary-foreground: 220 13% 18%;
+    
+    --gov-blue: 214 84% 56%;
+    --gov-blue-foreground: 0 0% 98%;
+    --gov-green: 142 76% 36%;
+    --gov-green-foreground: 0 0% 98%;
+
+    /* Status Colors */
+    --status-submitted: 43 89% 65%;
+    --status-received: 214 84% 56%;
+    --status-confirmed: 142 76% 36%;
+    --status-rejected: 0 84% 60%;
+    --status-hold: 38 92% 50%;
+
+    /* Neutral System */
+    --muted: 210 15% 96%;
+    --muted-foreground: 215 13% 50%;
+
+    --accent: 210 15% 96%;
+    --accent-foreground: 220 13% 18%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 16 100% 55%;
+
+    /* Design Tokens */
+    --radius: 0.75rem;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+
+    /* Animations */
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-hover)));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--gov-blue)) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Core System Colors - Dark Mode */
+    --background: 220 27% 8%;
+    --foreground: 210 40% 98%;
+
+    --card: 220 27% 10%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 220 27% 10%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Brand Colors - Dark Mode */
+    --primary: 16 100% 55%; /* Keep orange accent */
+    --primary-foreground: 0 0% 98%;
+    --primary-hover: 16 100% 60%;
+    --primary-light: 16 100% 15%;
+
+    /* Government Official Colors - Dark Mode */
+    --secondary: 220 27% 12%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --gov-blue: 214 84% 65%;
+    --gov-blue-foreground: 0 0% 98%;
+    --gov-green: 142 76% 45%;
+    --gov-green-foreground: 0 0% 98%;
+
+    /* Status Colors - Dark Mode */
+    --status-submitted: 43 89% 75%;
+    --status-received: 214 84% 65%;
+    --status-confirmed: 142 76% 45%;
+    --status-rejected: 0 84% 70%;
+    --status-hold: 38 92% 60%;
+
+    /* Neutral System - Dark Mode */
+    --muted: 220 27% 15%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 220 27% 15%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 27% 20%;
+    --input: 220 27% 20%;
+    --ring: 16 100% 55%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    transition: var(--transition);
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  /* Status Badge Components */
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .status-submitted {
+    @apply bg-yellow-50 text-yellow-800 border border-yellow-200;
+    background-color: hsl(var(--status-submitted) / 0.1);
+    color: hsl(var(--status-submitted));
+    border-color: hsl(var(--status-submitted) / 0.2);
+  }
+  
+  .status-received {
+    @apply bg-blue-50 text-blue-800 border border-blue-200;
+    background-color: hsl(var(--status-received) / 0.1);
+    color: hsl(var(--status-received));
+    border-color: hsl(var(--status-received) / 0.2);
+  }
+  
+  .status-confirmed {
+    @apply bg-green-50 text-green-800 border border-green-200;
+    background-color: hsl(var(--status-confirmed) / 0.1);
+    color: hsl(var(--status-confirmed));
+    border-color: hsl(var(--status-confirmed) / 0.2);
+  }
+  
+  .status-rejected {
+    @apply bg-red-50 text-red-800 border border-red-200;
+    background-color: hsl(var(--status-rejected) / 0.1);
+    color: hsl(var(--status-rejected));
+    border-color: hsl(var(--status-rejected) / 0.2);
+  }
+  
+  .status-hold {
+    @apply bg-orange-50 text-orange-800 border border-orange-200;
+    background-color: hsl(var(--status-hold) / 0.1);
+    color: hsl(var(--status-hold));
+    border-color: hsl(var(--status-hold) / 0.2);
+  }
+
+  /* Custom Button Variants */
+  .btn-government {
+    @apply bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 focus:ring-blue-500;
+    background: hsl(var(--gov-blue));
+    color: hsl(var(--gov-blue-foreground));
+  }
+  
+  .btn-government:hover {
+    background: hsl(var(--gov-blue) / 0.9);
+  }
+
+  /* Signature Canvas Styles */
+  .signature-canvas {
+    @apply border-2 border-dashed border-muted-foreground/20 rounded-lg bg-muted/10;
+    cursor: crosshair;
+  }
+  
+  .signature-canvas:focus {
+    @apply border-primary ring-2 ring-primary/20;
+  }
+
+  /* Document Viewer Styles */
+  .document-viewer {
+    @apply bg-muted/30 rounded-lg overflow-hidden shadow-inner;
+  }
+  
+  /* Animation Classes */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.2s ease-out;
+  }
+  
+  @keyframes slideIn {
+    from { transform: translateX(-10px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+}
