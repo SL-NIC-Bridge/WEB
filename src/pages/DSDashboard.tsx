@@ -171,7 +171,7 @@ const DSDashboard: React.FC = () => {
           <Badge variant="default" className="px-3 py-1">
             {stats.totalGNs} Active GNs
           </Badge>
-          <Dialog open={isCreateGNOpen} onOpenChange={setIsCreateGNOpen}>
+          {/* <Dialog open={isCreateGNOpen} onOpenChange={setIsCreateGNOpen}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary-hover">
                 <UserPlus className="mr-2 h-4 w-4" />
@@ -184,7 +184,7 @@ const DSDashboard: React.FC = () => {
               </DialogHeader>
               <CreateGNForm onClose={() => setIsCreateGNOpen(false)} />
             </DialogContent>
-          </Dialog>
+          </Dialog> */}
         </div>
       </div>
 
