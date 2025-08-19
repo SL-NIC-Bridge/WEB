@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import StatusBadge from '@/components/shared/StatusBadge';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { mockApplications, generateMockApplications } from '@/services/mockData';
@@ -20,7 +23,10 @@ import {
   Calendar,
   CheckCircle,
   Download,
-  Eye
+  Eye,
+  XCircle,
+  Clock,
+  PenTool
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -30,6 +36,13 @@ const DSReview: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showHoldDialog, setShowHoldDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [holdReason, setHoldReason] = useState('');
+
+  // Mock GN signature (in real app, this would come from the GN registration data)
+  const mockGnSignature = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='; // placeholder
 
   // Find the application
   const application = useMemo(() => {
@@ -49,6 +62,44 @@ const DSReview: React.FC = () => {
       navigate('/ds');
     } catch (error) {
       toast.error('Failed to send application to DRP');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!application || !rejectReason.trim()) {
+      toast.error('Please provide a reason for rejection');
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      toast.success(`Application has been rejected: ${rejectReason}`);
+      setShowRejectDialog(false);
+      navigate('/ds');
+    } catch (error) {
+      toast.error('Failed to reject application');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleHold = async () => {
+    if (!application || !holdReason.trim()) {
+      toast.error('Please provide a reason for holding');
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      toast.success(`Application has been put on hold: ${holdReason}`);
+      setShowHoldDialog(false);
+      navigate('/ds');
+    } catch (error) {
+      toast.error('Failed to hold application');
     } finally {
       setIsProcessing(false);
     }
@@ -272,6 +323,60 @@ const DSReview: React.FC = () => {
 
         {/* Action Panel */}
         <div className="space-y-6">
+          {/* GN Signature Verification */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <PenTool className="h-5 w-5" />
+                <span>GN Signature Verification</span>
+              </CardTitle>
+              <CardDescription>
+                Compare the GN's signature on the application with their registered signature
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground mb-2 block">
+                    Registered GN Signature
+                  </Label>
+                  <div className="border rounded-lg p-4 bg-gray-50 min-h-[120px] flex items-center justify-center">
+                    <div className="text-center">
+                      <PenTool className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">GN Registered Signature</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {application.assignedGnName}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground mb-2 block">
+                    Application Signature
+                  </Label>
+                  <div className="border rounded-lg p-4 bg-white min-h-[120px] flex items-center justify-center">
+                    <div className="text-center">
+                      <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                      <p className="text-sm text-green-700">Signature Applied</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {format(new Date(application.updatedAt), 'MMM d, yyyy h:mm a')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Signature Status:</strong> The signatures match and the GN verification is authentic.
+                  You can proceed with sending this application to DRP.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+
           {/* GN Verification Status */}
           <Card>
             <CardHeader>
@@ -346,13 +451,27 @@ const DSReview: React.FC = () => {
                   )}
                 </Button>
                 
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  disabled={isProcessing}
-                >
-                  Request Additional Information
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-yellow-200 text-yellow-700 hover:bg-yellow-50"
+                    disabled={isProcessing}
+                    onClick={() => setShowHoldDialog(true)}
+                  >
+                    <Clock className="mr-2 h-4 w-4" />
+                    Hold
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-red-200 text-red-700 hover:bg-red-50"
+                    disabled={isProcessing}
+                    onClick={() => setShowRejectDialog(true)}
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Reject
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -396,12 +515,94 @@ const DSReview: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {/* Reject Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Application</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this application. The applicant and GN will be notified.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="rejectReason" className="text-sm font-medium">Reason for Rejection *</label>
+              <Textarea
+                id="rejectReason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Explain why this application is being rejected..."
+                className="mt-1"
+                rows={4}
+              />
+            </div>
+            <div className="flex space-x-3 justify-end">
+              <Button variant="outline" onClick={() => setShowRejectDialog(false)} disabled={isProcessing}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleReject} disabled={isProcessing || !rejectReason.trim()}>
+                {isProcessing ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" />
+                    Rejecting...
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Reject Application
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hold Dialog */}
+      <Dialog open={showHoldDialog} onOpenChange={setShowHoldDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hold Application</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for putting this application on hold. The applicant and GN will be notified.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="holdReason" className="text-sm font-medium">Reason for Hold *</label>
+              <Textarea
+                id="holdReason"
+                value={holdReason}
+                onChange={(e) => setHoldReason(e.target.value)}
+                placeholder="Explain why this application is being put on hold..."
+                className="mt-1"
+                rows={4}
+              />
+            </div>
+            <div className="flex space-x-3 justify-end">
+              <Button variant="outline" onClick={() => setShowHoldDialog(false)} disabled={isProcessing}>
+                Cancel
+              </Button>
+              <Button onClick={handleHold} disabled={isProcessing || !holdReason.trim()}>
+                {isProcessing ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Clock className="mr-2 h-4 w-4" />
+                    Hold Application
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
-
-const Label: React.FC<{ className?: string; children: React.ReactNode }> = ({ className, children }) => (
-  <label className={className}>{children}</label>
-);
 
 export default DSReview;
