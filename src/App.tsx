@@ -11,8 +11,10 @@ import LoginPage from '@/pages/LoginPage';
 import GNDashboard from '@/pages/GNDashboard';
 import GNApplications from '@/pages/GNApplications';
 import DSDashboard from '@/pages/DSDashboard';
+import DSGNManagement from '@/pages/DSGNManagement';
 import DSReview from '@/pages/DSReview';
 import ProtectedRoute from '@/components/shared/ProtectedRoute';
+import GNRegistration from './pages/GNRegistrationPage';
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,7 @@ const App = () => (
               <Routes>
                 {/* Public Routes */}
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/gn/register" element={<GNRegistration />} />
                 
                 {/* Protected Routes with Layout */}
                 <Route path="/gn" element={
@@ -48,6 +51,13 @@ const App = () => (
                   <ProtectedRoute allowedRoles={['DS']}>
                     <AppHeader />
                     <DSDashboard />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/ds/gn-management" element={
+                  <ProtectedRoute allowedRoles={['DS']}>
+                    <AppHeader />
+                    <DSGNManagement />
                   </ProtectedRoute>
                 } />
                 
