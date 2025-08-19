@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import { Eye, EyeOff, Shield, FileText, Users } from 'lucide-react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import heroImage from '@/assets/hero-government.jpg';
 import certificationBadge from '@/assets/certification-badge.jpg';
 
@@ -63,11 +63,11 @@ const LoginPage: React.FC = () => {
             <div className="flex items-center justify-center space-x-4 mb-6">
               <img 
                 src={certificationBadge} 
-                alt="Government NIC Badge" 
+                alt="Government Certification Badge" 
                 className="h-16 w-16 rounded-full bg-white p-2"
               />
               <div>
-                <h1 className="text-4xl font-bold mb-2">E-NIC Portal</h1>
+                <h1 className="text-4xl font-bold mb-2">E-Certification Portal</h1>
                 <p className="text-lg text-blue-100">
                   Government Document Verification System
                 </p>
@@ -186,8 +186,21 @@ const LoginPage: React.FC = () => {
                 </Button>
               </form>
 
+              {/* GN Registration Link */}
+              <div className="mt-6 pt-4 border-t border-gray-200 text-center">
+                <p className="text-sm text-gray-600 mb-3">
+                  Are you Grama Niladhari? 
+                </p>
+                <Link 
+                  to="/gn/register" 
+                  className="text-primary hover:text-primary-hover font-medium text-sm underline"
+                >
+                  Sign Up if you are not previously signed up
+                </Link>
+              </div>
+
               {/* Demo Credentials */}
-              <div className="mt-8 pt-6 border-t border-gray-200">
+              <div className="mt-6 pt-4 border-t border-gray-200">
                 <p className="text-xs text-gray-500 mb-3 text-center">Demo Credentials:</p>
                 <div className="grid grid-cols-1 gap-2 text-xs">
                   <div className="bg-gray-50 p-2 rounded text-center">
