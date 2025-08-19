@@ -12,11 +12,25 @@ class AuthService {
     await this.delay(1000);
 
     const user = mockUsers.find(u => 
-      u.email === credentials.email && u.active
+      u.email === credentials.email
     );
 
     if (!user) {
       throw new Error('Invalid credentials');
+    }
+
+    // Check if user is active and approved
+    if (!user.active) {
+      throw new Error('Account is inactive');
+    }
+
+    // For GN users, check approval status
+    if (user.role === 'GN' && user.status !== 'approved') {
+      if (user.status === 'pending') {
+        throw new Error('Account pending DS approval');
+      } else if (user.status === 'rejected') {
+        throw new Error('Registration was rejected');
+      }
     }
 
     // In a real app, verify password hash here
