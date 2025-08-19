@@ -50,7 +50,7 @@ const AppHeader: React.FC = () => {
               <span className="text-white font-bold text-sm">EC</span>
             </div>
             <div>
-              <h1 className="text-lg font-semibold">E-NIC Portal</h1>
+              <h1 className="text-lg font-semibold">E-Certification Portal</h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
                 Document Verification System
               </p>
@@ -65,10 +65,10 @@ const AppHeader: React.FC = () => {
                   <Link to="/ds" className="text-sm font-medium hover:text-primary transition-colors">
                     Dashboard
                   </Link>
-                  <Link to="/ds#review" className="text-sm font-medium hover:text-primary transition-colors">
+                  {/* <Link to="/ds#review" className="text-sm font-medium hover:text-primary transition-colors">
                     Review Queue
-                  </Link>
-                  <Link to="/ds#gn-management" className="text-sm font-medium hover:text-primary transition-colors">
+                  </Link> */}
+                  <Link to="/ds/gn-management" className="text-sm font-medium hover:text-primary transition-colors">
                     GN Management
                   </Link>
                 </>
