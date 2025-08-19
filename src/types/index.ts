@@ -12,6 +12,7 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   active: boolean;
+  status?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface Wasama {
