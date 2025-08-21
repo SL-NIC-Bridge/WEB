@@ -43,7 +43,7 @@ const GNRegistration: React.FC = () => {
     if (!formData.email.includes('@')) newErrors.email = 'Invalid email format';
     if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
     if (!formData.nic.trim()) newErrors.nic = 'NIC is required';
-    if (!formData.wasamaId) newErrors.wasamaId = 'Wasama is required';
+    if (!formData.wasamaId) newErrors.wasamaId = 'GN Division is required';
     if (!formData.password) newErrors.password = 'Password is required';
     if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
     if (formData.password !== formData.confirmPassword) {
@@ -210,10 +210,10 @@ const GNRegistration: React.FC = () => {
                   <h3 className="text-lg font-semibold text-gray-900">Administrative Assignment</h3>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="wasama">Wasama *</Label>
+                    <Label htmlFor="wasama">GN Division *</Label>
                     <Select onValueChange={(value) => handleInputChange('wasamaId', value)} disabled={isSubmitting}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select your assigned Wasama" />
+                        <SelectValue placeholder="Select your assigned GN Division" />
                       </SelectTrigger>
                       <SelectContent>
                         {mockDataService.mockWasamas.map((wasama) => (

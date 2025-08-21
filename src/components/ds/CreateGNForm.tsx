@@ -38,7 +38,7 @@ const CreateGNForm: React.FC<CreateGNFormProps> = ({ onClose }) => {
     }
 
     if (!formData.wasamaId) {
-      newErrors.wasamaId = 'Please select a wasama assignment';
+      newErrors.wasamaId = 'Please select a GN Division assignment';
     }
 
     if (!formData.password || formData.password.length < 8) {
@@ -141,7 +141,7 @@ const CreateGNForm: React.FC<CreateGNFormProps> = ({ onClose }) => {
 
           {/* Wasama Assignment */}
           <div className="space-y-2">
-            <Label>Wasama Assignment *</Label>
+            <Label>GN Division Assignment *</Label>
             <Select 
               value={formData.wasamaId} 
               onValueChange={handleChange('wasamaId')}

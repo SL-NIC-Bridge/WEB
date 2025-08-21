@@ -61,11 +61,11 @@ const DSGNManagement: React.FC = () => {
 
   const getWasamaName = (wasamaId: string) => {
     const wasamas = [
-      { id: 'wasama1', name: 'Colombo Central Wasama' },
-      { id: 'wasama2', name: 'Kandy Municipal Wasama' },
-      { id: 'wasama3', name: 'Galle Urban Wasama' }
+      { id: 'wasama1', name: 'Colombo Central GN Division' },
+      { id: 'wasama2', name: 'Kandy Municipal GN Division' },
+      { id: 'wasama3', name: 'Galle Urban GN Division' }
     ];
-    return wasamas.find(w => w.id === wasamaId)?.name || 'Unknown Wasama';
+    return wasamas.find(w => w.id === wasamaId)?.name || 'Unknown GN Division';
   };
 
   const filterRegistrations = () => {
@@ -352,7 +352,7 @@ const DSGNManagement: React.FC = () => {
                     <p className="text-sm font-medium">{selectedRegistration.phone}</p>
                   </div>
                   <div className="col-span-2">
-                    <Label className="text-sm font-medium text-gray-500">Assigned Wasama</Label>
+                    <Label className="text-sm font-medium text-gray-500">Assigned GN Division</Label>
                     <p className="text-sm font-medium">{selectedRegistration.wasamaName}</p>
                   </div>
                 </div>

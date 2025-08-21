@@ -72,7 +72,7 @@ const GNRegistrationForm: React.FC<GNRegistrationFormProps> = ({ onSubmit }) => 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="wasamaId">Wasama ID</Label>
+            <Label htmlFor="wasamaId">GN Division ID</Label>
             <Input
               id="wasamaId"
               value={formData.wasamaId}
