@@ -24,6 +24,49 @@ export const mockWasamas: Wasama[] = [
   }
 ];
 
+export const mockGNRegistrations = [
+  {
+    id: uuidv4(),
+    name: 'Kamal Perera',
+    email: 'kamal.perera@example.com',
+    phone: '+94771234567',
+    nic: '199012345678',
+    wasamaId: 'wasama1',
+    wasamaName: 'Colombo Central GN Division',
+    signature: '/mock-files/signature-kamal.png',
+    status: 'pending_approval',
+    submittedAt: new Date('2024-08-10T09:30:00Z').toISOString(),
+  },
+  {
+    id: uuidv4(),
+    name: 'Sanduni Fernando',
+    email: 'sanduni.fernando@example.com',
+    phone: '+94779876543',
+    nic: '198765432109',
+    wasamaId: 'wasama2',
+    wasamaName: 'Kandy Municipal GN Division',
+    signature: '/mock-files/signature-sanduni.png',
+    status: 'approved',
+    submittedAt: new Date('2024-08-05T10:00:00Z').toISOString(),
+    reviewedAt: new Date('2024-08-07T15:30:00Z').toISOString(),
+    reviewComment: 'All documents verified successfully.',
+  },
+  {
+    id: uuidv4(),
+    name: 'Roshan Silva',
+    email: 'roshan.silva@example.com',
+    phone: '+94773456789',
+    nic: '199145678912',
+    wasamaId: 'wasama3',
+    wasamaName: 'Galle Urban GN Division',
+    signature: '/mock-files/signature-roshan.png',
+    status: 'rejected',
+    submittedAt: new Date('2024-08-02T14:15:00Z').toISOString(),
+    reviewedAt: new Date('2024-08-04T11:45:00Z').toISOString(),
+    reviewComment: 'NIC photo mismatch. Please resubmit.',
+  },
+];
+
 // Mock Users (1 DS, 2 GNs)
 export const mockUsers: User[] = [
   {
