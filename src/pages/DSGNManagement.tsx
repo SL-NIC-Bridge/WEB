@@ -11,6 +11,12 @@ import { Separator } from '@/components/ui/separator';
 import { Users, CheckCircle, XCircle, Clock, Eye, UserCheck, UserX, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import AppHeader from '@/components/layout/AppHeader';
+import { mockGNRegistrations } from '@/services/mockData';
+
+
+if (!localStorage.getItem('gnRegistrations')) {
+  localStorage.setItem('gnRegistrations', JSON.stringify(mockGNRegistrations));
+}
 
 interface GNRegistration {
   id: string;
