@@ -241,10 +241,10 @@ const DSDashboard: React.FC = () => {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="review">Ready for Review ({stats.readyForReview})</TabsTrigger>
-          <TabsTrigger value="gn-management">GN Management</TabsTrigger>
+          {/* <TabsTrigger value="gn-management">GN Management</TabsTrigger> */}
           <TabsTrigger value="all-applications">All Applications</TabsTrigger>
         </TabsList>
 
