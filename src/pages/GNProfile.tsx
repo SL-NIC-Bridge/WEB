@@ -95,7 +95,7 @@ const GNProfile: React.FC = () => {
               
               {user.wasamaName && (
                 <div>
-                  <p className="text-sm font-medium mb-2">Wasama</p>
+                  <p className="text-sm font-medium mb-2">GN Division</p>
                   <Badge variant="outline">{user.wasamaName}</Badge>
                 </div>
               )}
