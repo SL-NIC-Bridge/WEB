@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, List } from 'lucide-react';
+import { Plus, List, Edit, Trash2 } from 'lucide-react';
 
 interface Division {
   id: string;
@@ -16,6 +17,7 @@ interface Division {
 const DSCreateDivision = () => {
   const [divisionNumber, setDivisionNumber] = useState('');
   const [divisionName, setDivisionName] = useState('');
+  const [editingDivision, setEditingDivision] = useState<Division | null>(null);
   const [divisions, setDivisions] = useState<Division[]>(() => {
     const saved = localStorage.getItem('gnDivisions');
     return saved ? JSON.parse(saved) : [];
@@ -29,24 +31,54 @@ const DSCreateDivision = () => {
       return;
     }
 
-    // Check if division number already exists
-    if (divisions.some(div => div.number === divisionNumber.trim())) {
-      toast.error('Division number already exists');
-      return;
+    if (editingDivision) {
+      // Check if division number already exists (excluding current editing division)
+      if (divisions.some(div => div.number === divisionNumber.trim() && div.id !== editingDivision.id)) {
+        toast.error('Division number already exists');
+        return;
+      }
+
+      const updatedDivisions = divisions.map(div =>
+        div.id === editingDivision.id
+          ? { ...div, number: divisionNumber.trim(), name: divisionName.trim() }
+          : div
+      );
+      setDivisions(updatedDivisions);
+      localStorage.setItem('gnDivisions', JSON.stringify(updatedDivisions));
+      toast.success('Division updated successfully');
+      setEditingDivision(null);
+    } else {
+      // Check if division number already exists
+      if (divisions.some(div => div.number === divisionNumber.trim())) {
+        toast.error('Division number already exists');
+        return;
+      }
+
+      const newDivision: Division = {
+        id: Date.now().toString(),
+        number: divisionNumber.trim(),
+        name: divisionName.trim(),
+        createdAt: new Date().toISOString()
+      };
+
+      const updatedDivisions = [...divisions, newDivision];
+      setDivisions(updatedDivisions);
+      localStorage.setItem('gnDivisions', JSON.stringify(updatedDivisions));
+      toast.success('GN Division created successfully');
     }
 
-    const newDivision: Division = {
-      id: Date.now().toString(),
-      number: divisionNumber.trim(),
-      name: divisionName.trim(),
-      createdAt: new Date().toISOString()
-    };
+    setDivisionNumber('');
+    setDivisionName('');
+  };
 
-    const updatedDivisions = [...divisions, newDivision];
-    setDivisions(updatedDivisions);
-    localStorage.setItem('gnDivisions', JSON.stringify(updatedDivisions));
+  const handleEdit = (division: Division) => {
+    setEditingDivision(division);
+    setDivisionNumber(division.number);
+    setDivisionName(division.name);
+  };
 
-    toast.success('GN Division created successfully');
+  const handleCancelEdit = () => {
+    setEditingDivision(null);
     setDivisionNumber('');
     setDivisionName('');
   };
@@ -71,11 +103,11 @@ const DSCreateDivision = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                Create New Division
+                {editingDivision ? <Edit className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                {editingDivision ? 'Edit Division' : 'Create New Division'}
               </CardTitle>
               <CardDescription>
-                Add a new GN Division with number and name
+                {editingDivision ? 'Update the division details' : 'Add a new GN Division with number and name'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -104,10 +136,17 @@ const DSCreateDivision = () => {
                   />
                 </div>
 
-                <Button type="submit" className="w-full">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Division
-                </Button>
+                <div className="flex gap-2">
+                  <Button type="submit" className="flex-1">
+                    {editingDivision ? <Edit className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                    {editingDivision ? 'Update Division' : 'Create Division'}
+                  </Button>
+                  {editingDivision && (
+                    <Button type="button" variant="outline" onClick={handleCancelEdit}>
+                      Cancel
+                    </Button>
+                  )}
+                </div>
               </form>
             </CardContent>
           </Card>
@@ -143,13 +182,44 @@ const DSCreateDivision = () => {
                           Created: {new Date(division.createdAt).toLocaleDateString()}
                         </div>
                       </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(division.id)}
-                      >
-                        Delete
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(division)}
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete Division {division.number} - {division.name}.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(division.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   ))
                 )}
