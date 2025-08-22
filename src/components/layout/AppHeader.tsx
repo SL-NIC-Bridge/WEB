@@ -71,6 +71,9 @@ const AppHeader: React.FC = () => {
                   <Link to="/ds/gn-management" className="text-sm font-medium hover:text-primary transition-colors">
                     GN Management
                   </Link>
+                  <Link to="/ds/create-division" className="text-sm font-medium hover:text-primary transition-colors">
+                    Create Division
+                  </Link>
                 </>
               ) : (
                 <>

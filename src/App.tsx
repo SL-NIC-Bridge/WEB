@@ -19,6 +19,7 @@ import DSProfile from "./pages/DSProfile";
 import DSSettings from "./pages/DSSettings";
 import GNProfile from "./pages/GNProfile";
 import GNSettings from "./pages/GNSettings";
+import DSCreateDivision from "./pages/DSCreateDivision";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +96,13 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 />
+
+                <Route path="/ds/create-division" element={
+                  <ProtectedRoute allowedRoles={['DS']}>
+                    <AppHeader />
+                    <DSCreateDivision />
+                  </ProtectedRoute>
+                } />
 
                 <Route
                   path="/ds/review/:applicationId"
