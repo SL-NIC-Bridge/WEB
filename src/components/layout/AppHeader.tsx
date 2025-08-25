@@ -113,7 +113,7 @@ const AppHeader: React.FC = () => {
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
                     <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getUserInitials(user.name)}
+                      {getUserInitials(user.firstName + ' ' + user.lastName)}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -121,7 +121,7 @@ const AppHeader: React.FC = () => {
               <DropdownMenuContent className="w-64" align="end" forceMount>
                 <div className="flex items-start justify-between p-2">
                   <div className="space-y-1 flex-1">
-                    <p className="text-sm font-medium leading-none">{user.name}</p>
+                    <p className="text-sm font-medium leading-none">{user.firstName}</p>
                     <p className="text-xs leading-none text-muted-foreground">
                       {user.email}
                     </p>

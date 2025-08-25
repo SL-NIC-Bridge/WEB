@@ -164,7 +164,7 @@ const DSDashboard: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold">DS Administrative Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {user.name} • System Overview & GN Management
+            Welcome back, {user.firstName} • System Overview & GN Management
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -472,7 +472,7 @@ const DSDashboard: React.FC = () => {
                       return (
                         <TableRow key={gn.id}>
                           <TableCell>
-                            <div className="font-medium">{gn.name}</div>
+                            <div className="font-medium">{gn.firstName}</div>
                             <div className="text-sm text-muted-foreground">
                               {applicationCount} applications assigned
                             </div>

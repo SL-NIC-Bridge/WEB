@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect, ReactNode } fr
 import { AuthState, User, LoginRequest } from '@/types';
 import { authService } from '@/services/authService';
 import { toast } from 'sonner';
+import { authApiService } from '@/services/apiServices';
 
 type AuthAction = 
   | { type: 'AUTH_START' }
@@ -86,14 +87,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: LoginRequest): Promise<boolean> => {
     try {
       dispatch({ type: 'AUTH_START' });
-      const response = await authService.login(credentials);
+      const response = await authApiService.login(credentials);
       
       // Store tokens
       localStorage.setItem('accessToken', response.accessToken);
       localStorage.setItem('refreshToken', response.refreshToken);
       
       dispatch({ type: 'AUTH_SUCCESS', payload: response.user });
-      toast.success(`Welcome back, ${response.user.name}!`);
+      toast.success(`Welcome back, ${response.user.firstName}!`);
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed';

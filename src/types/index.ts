@@ -2,23 +2,26 @@
 
 export type UserRole = 'DS' | 'GN';
 
+
 export interface User {
   id: string;
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  currentStatus: 'ACTIVE' | 'PENDING_APPROVAL' | 'REJECTED' | 'DEACTIVATED';
   role: UserRole;
   gnDivisionId?: string;
   gnDivisionName?: string;
   createdAt: string;
   updatedAt: string;
   active: boolean;
-  status?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface GnDivision {
   id: string;
+  code: string; 
   name: string;
-  description: string;
   createdAt: string;
 }
 

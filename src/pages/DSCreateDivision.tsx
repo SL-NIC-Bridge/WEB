@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,19 +6,14 @@ import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { Plus, List, Edit, Trash2 } from 'lucide-react';
-
-interface Division {
-  id: string;
-  number: string;
-  name: string;
-  createdAt: string;
-}
+import { divisionApiService } from '@/services/apiServices';
+import { GnDivision } from '@/types';
 
 const DSCreateDivision = () => {
   const [divisionNumber, setDivisionNumber] = useState('');
   const [divisionName, setDivisionName] = useState('');
-  const [editingDivision, setEditingDivision] = useState<Division | null>(null);
-  const [divisions, setDivisions] = useState<Division[]>(() => {
+  const [editingDivision, setEditingDivision] = useState<GnDivision | null>(null);
+  const [divisions, setDivisions] = useState<GnDivision[]>(() => {
     const saved = localStorage.getItem('gnDivisions');
     return saved ? JSON.parse(saved) : [];
   });
@@ -33,7 +28,7 @@ const DSCreateDivision = () => {
 
     if (editingDivision) {
       // Check if division number already exists (excluding current editing division)
-      if (divisions.some(div => div.number === divisionNumber.trim() && div.id !== editingDivision.id)) {
+      if (divisions.some(div => div.code === divisionNumber.trim() && div.id !== editingDivision.id)) {
         toast.error('Division number already exists');
         return;
       }
@@ -49,31 +44,38 @@ const DSCreateDivision = () => {
       setEditingDivision(null);
     } else {
       // Check if division number already exists
-      if (divisions.some(div => div.number === divisionNumber.trim())) {
-        toast.error('Division number already exists');
-        return;
-      }
+      // if (divisions.some(div => div.code === divisionNumber.trim())) {
+      //   toast.error('Division number already exists');
+      //   return;
+      // }
 
-      const newDivision: Division = {
-        id: Date.now().toString(),
-        number: divisionNumber.trim(),
-        name: divisionName.trim(),
-        createdAt: new Date().toISOString()
+      const newDivision = {
+        
+        code: divisionNumber.trim(),
+        name: divisionName.trim()
       };
+      divisionApiService.createGnDivision(newDivision).then((createdDivision) => {
+        const updatedDivisions = [...divisions, createdDivision];
+        setDivisions(updatedDivisions);
+        localStorage.setItem('gnDivisions', JSON.stringify(updatedDivisions));
+        toast.success('GN Division created successfully');
+      }).catch(() => {
+        toast.error('Failed to create GN Division');
+      });
 
-      const updatedDivisions = [...divisions, newDivision];
-      setDivisions(updatedDivisions);
-      localStorage.setItem('gnDivisions', JSON.stringify(updatedDivisions));
-      toast.success('GN Division created successfully');
+      // const updatedDivisions = [...divisions, newDivision];
+      // setDivisions(updatedDivisions);
+      // localStorage.setItem('gnDivisions', JSON.stringify(updatedDivisions));
+      // toast.success('GN Division created successfully');
     }
 
     setDivisionNumber('');
     setDivisionName('');
   };
 
-  const handleEdit = (division: Division) => {
+  const handleEdit = (division: GnDivision) => {
     setEditingDivision(division);
-    setDivisionNumber(division.number);
+    setDivisionNumber(division.code);
     setDivisionName(division.name);
   };
 
@@ -89,6 +91,17 @@ const DSCreateDivision = () => {
     localStorage.setItem('gnDivisions', JSON.stringify(updatedDivisions));
     toast.success('Division deleted successfully');
   };
+
+  useEffect(() => {
+    // Load divisions from localStorage on mount
+     divisionApiService.getGnDivisions().then(response => {
+       setDivisions(response.data)
+      }).catch(() => {
+        toast.error('Failed to load divisions');
+      }
+    );
+    
+  }, []);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -173,7 +186,7 @@ const DSCreateDivision = () => {
                     <div key={division.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
                       <div>
                         <div className="font-medium text-foreground">
-                          Division {division.number}
+                          Division {division.code}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {division.name}
@@ -205,7 +218,7 @@ const DSCreateDivision = () => {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete Division {division.number} - {division.name}.
+                                This action cannot be undone. This will permanently delete Division {division.code} - {division.name}.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
