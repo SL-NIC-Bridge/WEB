@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { mockWasamas } from '@/services/mockData';
+import { mockGnDivisions } from '@/services/mockData';
 import { CreateGnForm } from '@/types';
 import { UserPlus, AlertCircle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -18,7 +18,7 @@ const CreateGNForm: React.FC<CreateGNFormProps> = ({ onClose }) => {
   const [formData, setFormData] = useState<CreateGnForm>({
     email: '',
     name: '',
-    wasamaId: '',
+    gnDivisionId: '',
     password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -37,8 +37,8 @@ const CreateGNForm: React.FC<CreateGNFormProps> = ({ onClose }) => {
       newErrors.email = 'Please enter a valid email address';
     }
 
-    if (!formData.wasamaId) {
-      newErrors.wasamaId = 'Please select a GN Division assignment';
+    if (!formData.gnDivisionId) {
+      newErrors.gnDivisionId = 'Please select a GN Division assignment';
     }
 
     if (!formData.password || formData.password.length < 8) {
@@ -139,34 +139,34 @@ const CreateGNForm: React.FC<CreateGNFormProps> = ({ onClose }) => {
             )}
           </div>
 
-          {/* Wasama Assignment */}
+          {/* GnDivision Assignment */}
           <div className="space-y-2">
             <Label>GN Division Assignment *</Label>
             <Select 
-              value={formData.wasamaId} 
-              onValueChange={handleChange('wasamaId')}
+              value={formData.gnDivisionId} 
+              onValueChange={handleChange('gnDivisionId')}
               disabled={isLoading}
             >
-              <SelectTrigger className={errors.wasamaId ? 'border-destructive' : ''}>
+              <SelectTrigger className={errors.gnDivisionId ? 'border-destructive' : ''}>
                 <SelectValue placeholder="Select administrative area" />
               </SelectTrigger>
               <SelectContent>
-                {mockWasamas.map((wasama) => (
-                  <SelectItem key={wasama.id} value={wasama.id}>
+                {mockGnDivisions.map((gnDivision) => (
+                  <SelectItem key={gnDivision.id} value={gnDivision.id}>
                     <div className="flex flex-col">
-                      <span className="font-medium">{wasama.name}</span>
+                      <span className="font-medium">{gnDivision.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {wasama.description}
+                        {gnDivision.description}
                       </span>
                     </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {errors.wasamaId && (
+            {errors.gnDivisionId && (
               <Alert variant="destructive" className="py-2">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{errors.wasamaId}</AlertDescription>
+                <AlertDescription>{errors.gnDivisionId}</AlertDescription>
               </Alert>
             )}
           </div>

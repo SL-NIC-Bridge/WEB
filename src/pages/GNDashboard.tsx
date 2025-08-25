@@ -18,9 +18,9 @@ const GNDashboard: React.FC = () => {
   // Get applications for this GN (including mock generated ones for demo)
   const baseApplications = useMemo(() => {
     const assigned = getApplicationsForGN(user.id);
-    const generated = generateMockApplications(25).filter(app => app.wasamaId === user.wasamaId);
+    const generated = generateMockApplications(25).filter(app => app.gnDivisionId === user.gnDivisionId);
     return [...assigned, ...generated];
-  }, [user.id, user.wasamaId]);
+  }, [user.id, user.gnDivisionId]);
 
   // Get status counts for statistics
   const statusCounts = useMemo(() => {
@@ -53,7 +53,7 @@ const GNDashboard: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold">GN Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {user.name} • {user.wasamaName}
+            Welcome back, {user.name} • {user.gnDivisionName}
           </p>
         </div>
         <Badge variant="secondary" className="px-3 py-1">

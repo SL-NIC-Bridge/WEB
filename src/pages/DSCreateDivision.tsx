@@ -95,7 +95,7 @@ const DSCreateDivision = () => {
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">GN Division Management</h1>
-          <p className="text-muted-foreground mt-2">Create and manage Grama Niladhari divisions (Wasama)</p>
+          <p className="text-muted-foreground mt-2">Create and manage Grama Niladhari divisions (GnDivision)</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

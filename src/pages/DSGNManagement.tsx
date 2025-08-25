@@ -24,8 +24,8 @@ interface GNRegistration {
   email: string;
   phone: string;
   nic: string;
-  wasamaId: string;
-  wasamaName?: string;
+  gnDivisionId: string;
+  gnDivisionName?: string;
   signature: string;
   status: 'pending_approval' | 'approved' | 'rejected';
   submittedAt: string;
@@ -56,22 +56,22 @@ const DSGNManagement: React.FC = () => {
     const stored = localStorage.getItem('gnRegistrations');
     if (stored) {
       const data = JSON.parse(stored);
-      // Add wasama names
+      // Add gnDivision names
       const enhanced = data.map((reg: any) => ({
         ...reg,
-        wasamaName: getWasamaName(reg.wasamaId)
+        gnDivisionName: getGnDivisionName(reg.gnDivisionId)
       }));
       setRegistrations(enhanced);
     }
   };
 
-  const getWasamaName = (wasamaId: string) => {
-    const wasamas = [
-      { id: 'wasama1', name: 'Colombo Central GN Division' },
-      { id: 'wasama2', name: 'Kandy Municipal GN Division' },
-      { id: 'wasama3', name: 'Galle Urban GN Division' }
+  const getGnDivisionName = (gnDivisionId: string) => {
+    const gnDivisions = [
+      { id: 'gnDivision1', name: 'Colombo Central GN Division' },
+      { id: 'gnDivision2', name: 'Kandy Municipal GN Division' },
+      { id: 'gnDivision3', name: 'Galle Urban GN Division' }
     ];
-    return wasamas.find(w => w.id === wasamaId)?.name || 'Unknown GN Division';
+    return gnDivisions.find(w => w.id === gnDivisionId)?.name || 'Unknown GN Division';
   };
 
   const filterRegistrations = () => {
@@ -286,7 +286,7 @@ const DSGNManagement: React.FC = () => {
                         <h3 className="font-semibold text-lg">{registration.name}</h3>
                         <p className="text-gray-600">{registration.email}</p>
                         <p className="text-sm text-gray-500">
-                          {registration.wasamaName} • NIC: {registration.nic}
+                          {registration.gnDivisionName} • NIC: {registration.nic}
                         </p>
                         <p className="text-xs text-gray-400">
                           Submitted: {new Date(registration.submittedAt).toLocaleDateString()}
@@ -359,7 +359,7 @@ const DSGNManagement: React.FC = () => {
                   </div>
                   <div className="col-span-2">
                     <Label className="text-sm font-medium text-gray-500">Assigned GN Division</Label>
-                    <p className="text-sm font-medium">{selectedRegistration.wasamaName}</p>
+                    <p className="text-sm font-medium">{selectedRegistration.gnDivisionName}</p>
                   </div>
                 </div>
 

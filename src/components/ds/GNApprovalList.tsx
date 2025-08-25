@@ -55,7 +55,7 @@ const GNApprovalList: React.FC<GNApprovalListProps> = ({
                     <h4 className="font-medium">{gn.name}</h4>
                     <p className="text-sm text-muted-foreground">{gn.email}</p>
                   </div>
-                  <Badge variant="outline">{gn.wasamaName}</Badge>
+                  <Badge variant="outline">{gn.gnDivisionName}</Badge>
                 </div>
 
                 <div className="space-y-2 mb-4">
@@ -64,8 +64,8 @@ const GNApprovalList: React.FC<GNApprovalListProps> = ({
                     <span>{format(new Date(gn.createdAt), 'PPP')}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Wasama ID</span>
-                    <span className="font-mono">{gn.wasamaId}</span>
+                    <span className="text-muted-foreground">GnDivision ID</span>
+                    <span className="font-mono">{gn.gnDivisionId}</span>
                   </div>
                 </div>
 

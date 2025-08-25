@@ -78,10 +78,10 @@ const DSProfile: React.FC = () => {
                 <Badge variant="default">Divisional Secretariat</Badge>
               </div>
               
-              {user.wasamaName && (
+              {user.gnDivisionName && (
                 <div>
                   <p className="text-sm font-medium mb-2">Jurisdiction</p>
-                  <Badge variant="outline">{user.wasamaName}</Badge>
+                  <Badge variant="outline">{user.gnDivisionName}</Badge>
                 </div>
               )}
               

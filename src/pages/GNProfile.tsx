@@ -93,10 +93,10 @@ const GNProfile: React.FC = () => {
                 <Badge variant="secondary">Grama Niladhari</Badge>
               </div>
               
-              {user.wasamaName && (
+              {user.gnDivisionName && (
                 <div>
                   <p className="text-sm font-medium mb-2">GN Division</p>
-                  <Badge variant="outline">{user.wasamaName}</Badge>
+                  <Badge variant="outline">{user.gnDivisionName}</Badge>
                 </div>
               )}
               

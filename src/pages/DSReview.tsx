@@ -234,7 +234,7 @@ const DSReview: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Administrative Area</Label>
-                  <p className="font-medium">{application.wasamaName}</p>
+                  <p className="font-medium">{application.gnDivisionName}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Assigned Grama Niladhari</Label>

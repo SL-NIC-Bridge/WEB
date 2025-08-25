@@ -7,15 +7,15 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
-  wasamaId?: string;
-  wasamaName?: string;
+  gnDivisionId?: string;
+  gnDivisionName?: string;
   createdAt: string;
   updatedAt: string;
   active: boolean;
   status?: 'pending' | 'approved' | 'rejected';
 }
 
-export interface Wasama {
+export interface GnDivision {
   id: string;
   name: string;
   description: string;
@@ -40,8 +40,8 @@ export interface Application {
   applicantNic?: string; // Optional for new NIC applications
   applicantPhone: string;
   applicationType: ApplicationType;
-  wasamaId: string;
-  wasamaName?: string;
+  gnDivisionId: string;
+  gnDivisionName?: string;
   status: ApplicationStatus;
   submittedAt: string;
   assignedGnId?: string;
@@ -143,7 +143,7 @@ export interface StatusUpdateForm {
 export interface CreateGnForm {
   email: string;
   name: string;
-  wasamaId: string;
+  gnDivisionId: string;
   password: string;
 }
 

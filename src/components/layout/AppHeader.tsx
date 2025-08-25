@@ -129,9 +129,9 @@ const AppHeader: React.FC = () => {
                       <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
                         {getRoleDisplayName(user.role)}
                       </Badge>
-                      {user.wasamaName && (
+                      {user.gnDivisionName && (
                         <Badge variant="outline" className="text-xs">
-                          {user.wasamaName}
+                          {user.gnDivisionName}
                         </Badge>
                       )}
                     </div>

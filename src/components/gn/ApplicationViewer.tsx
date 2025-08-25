@@ -207,7 +207,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Administrative Area</label>
-                  <Badge variant="outline">{application.wasamaName}</Badge>
+                  <Badge variant="outline">{application.gnDivisionName}</Badge>
                 </div>
                 {application.applicationType === 'new_nic' && (
                   <div className="md:col-span-2">

@@ -26,7 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import StatusBadge from '@/components/shared/StatusBadge';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import CreateGNForm from '@/components/ds/CreateGNForm';
-import { mockApplications, mockUsers, mockWasamas, generateMockApplications } from '@/services/mockData';
+import { mockApplications, mockUsers, mockGnDivisions, generateMockApplications } from '@/services/mockData';
 import { Application, User } from '@/types';
 import { 
   Search, 
@@ -77,7 +77,7 @@ const DSDashboard: React.FC = () => {
       (app.applicantNic && app.applicantNic.toLowerCase().includes(query)) ||
       app.applicantPhone.includes(query) ||
       app.id.toLowerCase().includes(query) ||
-      (app.wasamaName && app.wasamaName.toLowerCase().includes(query))
+      (app.gnDivisionName && app.gnDivisionName.toLowerCase().includes(query))
     );
   }, [allApplications, searchQuery]);
 
@@ -274,7 +274,7 @@ const DSDashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Wasama Distribution */}
+            {/* GnDivision Distribution */}
             <Card>
               <CardHeader>
                 <CardTitle>Area Distribution</CardTitle>
@@ -282,14 +282,14 @@ const DSDashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockWasamas.map((wasama) => {
-                    const count = allApplications.filter(app => app.wasamaId === wasama.id).length;
+                  {mockGnDivisions.map((gnDivision) => {
+                    const count = allApplications.filter(app => app.gnDivisionId === gnDivision.id).length;
                     const percentage = allApplications.length > 0 ? (count / allApplications.length) * 100 : 0;
                     
                     return (
-                      <div key={wasama.id} className="space-y-2">
+                      <div key={gnDivision.id} className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium">{wasama.name}</span>
+                          <span className="font-medium">{gnDivision.name}</span>
                           <span className="text-muted-foreground">{count} applications</span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-2">
@@ -357,7 +357,7 @@ const DSDashboard: React.FC = () => {
                             <div>
                               <div className="font-medium text-sm">{app.assignedGnName}</div>
                               <div className="text-xs text-muted-foreground">
-                                {app.wasamaName}
+                                {app.gnDivisionName}
                               </div>
                             </div>
                           </TableCell>
@@ -479,7 +479,7 @@ const DSDashboard: React.FC = () => {
                           </TableCell>
                           <TableCell>{gn.email}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">{gn.wasamaName}</Badge>
+                            <Badge variant="outline">{gn.gnDivisionName}</Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant={gn.active ? "default" : "secondary"}>
@@ -575,7 +575,7 @@ const DSDashboard: React.FC = () => {
                             <div>
                               <div className="font-medium text-sm">{app.assignedGnName}</div>
                               <div className="text-xs text-muted-foreground">
-                                {app.wasamaName}
+                                {app.gnDivisionName}
                               </div>
                             </div>
                           </TableCell>

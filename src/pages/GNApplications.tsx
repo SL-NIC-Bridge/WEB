@@ -45,9 +45,9 @@ const GNApplications: React.FC = () => {
   // Get applications for this GN (including mock generated ones for demo)
   const baseApplications = useMemo(() => {
     const assigned = getApplicationsForGN(user.id);
-    const generated = generateMockApplications(25).filter(app => app.wasamaId === user.wasamaId);
+    const generated = generateMockApplications(25).filter(app => app.gnDivisionId === user.gnDivisionId);
     return [...assigned, ...generated];
-  }, [user.id, user.wasamaId]);
+  }, [user.id, user.gnDivisionId]);
 
   // Filter applications based on search and tab
   const filteredApplications = useMemo(() => {
@@ -157,7 +157,7 @@ const GNApplications: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold">Applications</h1>
           <p className="text-muted-foreground">
-            Manage document verification requests for {user.wasamaName}
+            Manage document verification requests for {user.gnDivisionName}
           </p>
         </div>
         <Badge variant="secondary" className="px-3 py-1">

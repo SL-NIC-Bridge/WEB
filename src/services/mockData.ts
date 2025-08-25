@@ -1,23 +1,23 @@
 // Mock Data for Development and Demo
-import { User, Wasama, Application, Document, AuditLog, ApplicationType } from '@/types';
+import { User, GnDivision, Application, Document, AuditLog, ApplicationType } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
-// Mock Wasama (Administrative Areas)
-export const mockWasamas: Wasama[] = [
+// Mock GnDivision (Administrative Areas)
+export const mockGnDivisions: GnDivision[] = [
   {
-    id: 'wasama-1',
+    id: 'gnDivision-1',
     name: 'Colombo North',
     description: 'Northern division of Colombo district',
     createdAt: '2024-01-15T08:00:00Z'
   },
   {
-    id: 'wasama-2',
+    id: 'gnDivision-2',
     name: 'Colombo South', 
     description: 'Southern division of Colombo district',
     createdAt: '2024-01-15T08:00:00Z'
   },
   {
-    id: 'wasama-3',
+    id: 'gnDivision-3',
     name: 'Gampaha Central',
     description: 'Central division of Gampaha district',
     createdAt: '2024-01-15T08:00:00Z'
@@ -31,8 +31,8 @@ export const mockGNRegistrations = [
     email: 'kamal.perera@example.com',
     phone: '+94771234567',
     nic: '199012345678',
-    wasamaId: 'wasama1',
-    wasamaName: 'Colombo Central GN Division',
+    gnDivisionId: 'gnDivision1',
+    gnDivisionName: 'Colombo Central GN Division',
     signature: '/mock-files/signature-kamal.png',
     status: 'pending_approval',
     submittedAt: new Date('2024-08-10T09:30:00Z').toISOString(),
@@ -43,8 +43,8 @@ export const mockGNRegistrations = [
     email: 'sanduni.fernando@example.com',
     phone: '+94779876543',
     nic: '198765432109',
-    wasamaId: 'wasama2',
-    wasamaName: 'Kandy Municipal GN Division',
+    gnDivisionId: 'gnDivision2',
+    gnDivisionName: 'Kandy Municipal GN Division',
     signature: '/mock-files/signature-sanduni.png',
     status: 'approved',
     submittedAt: new Date('2024-08-05T10:00:00Z').toISOString(),
@@ -57,8 +57,8 @@ export const mockGNRegistrations = [
     email: 'roshan.silva@example.com',
     phone: '+94773456789',
     nic: '199145678912',
-    wasamaId: 'wasama3',
-    wasamaName: 'Galle Urban GN Division',
+    gnDivisionId: 'gnDivision3',
+    gnDivisionName: 'Galle Urban GN Division',
     signature: '/mock-files/signature-roshan.png',
     status: 'rejected',
     submittedAt: new Date('2024-08-02T14:15:00Z').toISOString(),
@@ -83,8 +83,8 @@ export const mockUsers: User[] = [
     email: 'gn1@colombo.gov.lk',
     name: 'Grama Niladhari Silva',
     role: 'GN',
-    wasamaId: 'wasama-1',
-    wasamaName: 'Colombo North',
+    gnDivisionId: 'gnDivision-1',
+    gnDivisionName: 'Colombo North',
     createdAt: '2024-01-12T08:00:00Z',
     updatedAt: '2024-01-12T08:00:00Z',
     active: true
@@ -94,8 +94,8 @@ export const mockUsers: User[] = [
     email: 'gn2@colombo.gov.lk',
     name: 'Grama Niladhari Fernando',
     role: 'GN',
-    wasamaId: 'wasama-2',
-    wasamaName: 'Colombo South',
+    gnDivisionId: 'gnDivision-2',
+    gnDivisionName: 'Colombo South',
     createdAt: '2024-01-12T08:00:00Z',
     updatedAt: '2024-01-12T08:00:00Z',
     active: true
@@ -168,8 +168,8 @@ export const mockApplications: Application[] = [
     applicantName: 'Kasun Rajapaksa',
     applicantPhone: '+94771234567',
     applicationType: 'new_nic',
-    wasamaId: 'wasama-1',
-    wasamaName: 'Colombo North',
+    gnDivisionId: 'gnDivision-1',
+    gnDivisionName: 'Colombo North',
     status: 'read',
     submittedAt: '2024-01-20T10:30:00Z',
     assignedGnId: 'user-gn-1',
@@ -183,8 +183,8 @@ export const mockApplications: Application[] = [
     applicantName: 'Nimal Perera',
     applicantPhone: '+94777654321',
     applicationType: 'new_nic',
-    wasamaId: 'wasama-1',
-    wasamaName: 'Colombo North',
+    gnDivisionId: 'gnDivision-1',
+    gnDivisionName: 'Colombo North',
     status: 'confirmed_by_gn',
     submittedAt: '2024-01-18T14:15:00Z',
     assignedGnId: 'user-gn-1',
@@ -199,8 +199,8 @@ export const mockApplications: Application[] = [
     applicantName: 'Saman Silva',
     applicantPhone: '+94712345678',
     applicationType: 'new_nic',
-    wasamaId: 'wasama-2',
-    wasamaName: 'Colombo South',
+    gnDivisionId: 'gnDivision-2',
+    gnDivisionName: 'Colombo South',
     status: 'submitted',
     submittedAt: '2024-01-22T09:00:00Z',
     assignedGnId: 'user-gn-2',
@@ -215,8 +215,8 @@ export const mockApplications: Application[] = [
     applicantNic: '197845678901',
     applicantPhone: '+94789876543',
     applicationType: 'document_verification',
-    wasamaId: 'wasama-1',
-    wasamaName: 'Colombo North',
+    gnDivisionId: 'gnDivision-1',
+    gnDivisionName: 'Colombo North',
     status: 'hold',
     submittedAt: '2024-01-15T16:20:00Z',
     assignedGnId: 'user-gn-1',
@@ -230,8 +230,8 @@ export const mockApplications: Application[] = [
     applicantName: 'Ruwan Kumara',
     applicantPhone: '+94765432109',
     applicationType: 'new_nic',
-    wasamaId: 'wasama-2',
-    wasamaName: 'Colombo South',
+    gnDivisionId: 'gnDivision-2',
+    gnDivisionName: 'Colombo South',
     status: 'sent_to_drp',
     submittedAt: '2024-01-10T11:45:00Z',
     assignedGnId: 'user-gn-2',
@@ -248,9 +248,9 @@ export const mockApplications: Application[] = [
 // Helper functions for getting related data
 export const getApplicationsForGN = (gnId: string): Application[] => {
   const gn = mockUsers.find(u => u.id === gnId && u.role === 'GN');
-  if (!gn || !gn.wasamaId) return [];
+  if (!gn || !gn.gnDivisionId) return [];
   
-  return mockApplications.filter(app => app.wasamaId === gn.wasamaId);
+  return mockApplications.filter(app => app.gnDivisionId === gn.gnDivisionId);
 };
 
 export const getDocumentsForApplication = (applicationId: string): Document[] => {
@@ -276,12 +276,12 @@ export const generateMockApplications = (count: number = 10): Application[] => {
       applicantNic: applicationType === 'document_verification' ? `19${80 + (i % 20)}${String(12345678 + i).slice(-8)}` : undefined,
       applicantPhone: `+9477${String(1000000 + i).slice(-7)}`,
       applicationType,
-      wasamaId: mockWasamas[i % mockWasamas.length].id,
-      wasamaName: mockWasamas[i % mockWasamas.length].name,
+      gnDivisionId: mockGnDivisions[i % mockGnDivisions.length].id,
+      gnDivisionName: mockGnDivisions[i % mockGnDivisions.length].name,
       status: statuses[i % statuses.length],
       submittedAt: new Date(Date.now() - (i * 24 * 60 * 60 * 1000)).toISOString(),
-      assignedGnId: mockUsers.find(u => u.role === 'GN' && u.wasamaId === mockWasamas[i % mockWasamas.length].id)?.id,
-      assignedGnName: mockUsers.find(u => u.role === 'GN' && u.wasamaId === mockWasamas[i % mockWasamas.length].id)?.name,
+      assignedGnId: mockUsers.find(u => u.role === 'GN' && u.gnDivisionId === mockGnDivisions[i % mockGnDivisions.length].id)?.id,
+      assignedGnName: mockUsers.find(u => u.role === 'GN' && u.gnDivisionId === mockGnDivisions[i % mockGnDivisions.length].id)?.name,
       currentPdfUrl: `/mock-files/birth-certificate-${i + 1}.pdf`,
       signedPdfUrl: ['confirmed_by_gn', 'sent_to_drp'].includes(statuses[i % statuses.length]) 
         ? `/mock-files/signed-birth-certificate-${i + 1}.pdf` : undefined,

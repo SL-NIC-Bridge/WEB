@@ -14,7 +14,7 @@ const GNRegistrationForm: React.FC<GNRegistrationFormProps> = ({ onSubmit }) => 
   const [formData, setFormData] = useState<CreateGnForm>({
     email: '',
     name: '',
-    wasamaId: '',
+    gnDivisionId: '',
     password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +30,7 @@ const GNRegistrationForm: React.FC<GNRegistrationFormProps> = ({ onSubmit }) => 
       setFormData({
         email: '',
         name: '',
-        wasamaId: '',
+        gnDivisionId: '',
         password: ''
       });
     } catch (error) {
@@ -72,11 +72,11 @@ const GNRegistrationForm: React.FC<GNRegistrationFormProps> = ({ onSubmit }) => 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="wasamaId">GN Division ID</Label>
+            <Label htmlFor="gnDivisionId">GN Division ID</Label>
             <Input
-              id="wasamaId"
-              value={formData.wasamaId}
-              onChange={(e) => setFormData(prev => ({ ...prev, wasamaId: e.target.value }))}
+              id="gnDivisionId"
+              value={formData.gnDivisionId}
+              onChange={(e) => setFormData(prev => ({ ...prev, gnDivisionId: e.target.value }))}
               required
             />
           </div>
