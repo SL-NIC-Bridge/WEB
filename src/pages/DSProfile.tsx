@@ -16,10 +16,10 @@ const DSProfile: React.FC = () => {
       <div className="space-y-6">
         <div className="flex items-center space-x-4">
           <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold">
-            {user.name.split(' ').map(part => part[0]).join('').toUpperCase().slice(0, 2)}
+            {user.firstName.split(' ').map(part => part[0]).join('').toUpperCase().slice(0, 2)}
           </div>
           <div>
-            <h1 className="text-3xl font-bold">{user.name}</h1>
+            <h1 className="text-3xl font-bold">{user.firstName} {user.lastName}</h1>
             <p className="text-muted-foreground">Divisional Secretariat</p>
           </div>
         </div>
