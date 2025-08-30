@@ -15,7 +15,7 @@ export const API_PATHS = {
     GET_BY_ID: (id: string) => `/users/${id}`,
     UPDATE: (id: string) => `/users/${id}`,
     DELETE: (id: string) => `/users/${id}`,
-    CREATE_GN: '/users/gn',
+    CREATE_GN: '/users',
   },
 
   // divisions (Division) management endpoints
