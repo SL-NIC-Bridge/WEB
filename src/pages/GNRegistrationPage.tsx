@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,18 +6,25 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, UserPlus, CheckCircle } from 'lucide-react';
+import { ArrowLeft, UserPlus, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import GNSignatureCanvas from '@/components/gn/SignatureCanvas';
-import * as mockDataService from '@/services/mockData';
+import { type GnDivision, type CreateGnForm, UserRole } from '@/types';
+import { divisionApiService, userApiService } from '@/services/apiServices';
+import * as bcrypt from 'bcryptjs';
 
 const GNRegistration: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoadingDivisions, setIsLoadingDivisions] = useState(true);
+  const [divisions, setDivisions] = useState<GnDivision[]>([]);
+  const [divisionsError, setDivisionsError] = useState<string>('');
+  
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     nic: '',
@@ -27,6 +34,28 @@ const GNRegistration: React.FC = () => {
   });
   const [signatureDataUrl, setSignatureDataUrl] = useState<string>('');
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+
+  // Load divisions on component mount
+  useEffect(() => {
+    loadDivisions();
+  }, []);
+
+  const loadDivisions = async () => {
+    try {
+      setIsLoadingDivisions(true);
+      setDivisionsError('');
+      
+      // Fetch all divisions with pagination - adjust limit as needed
+      const response = await divisionApiService.getGnDivisions(1, 100);
+      setDivisions(response.data);
+    } catch (error) {
+      console.error('Failed to load divisions:', error);
+      setDivisionsError('Failed to load GN Divisions. Please refresh the page to try again.');
+      toast.error('Failed to load GN Divisions');
+    } finally {
+      setIsLoadingDivisions(false);
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -38,18 +67,45 @@ const GNRegistration: React.FC = () => {
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
 
-    if (!formData.name.trim()) newErrors.name = 'Name is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    if (!formData.email.includes('@')) newErrors.email = 'Invalid email format';
-    if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
-    if (!formData.nic.trim()) newErrors.nic = 'NIC is required';
+    // Personal Information Validation
+    if (!formData.firstName.trim()) newErrors.firstName = 'First Name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last Name is required';
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!/^0\d{9}$/.test(formData.phone.replace(/\s/g, ''))) {
+      newErrors.phone = 'Please enter a valid Sri Lankan phone number (e.g., 0771234567)';
+    }
+    if (!formData.nic.trim()) {
+      newErrors.nic = 'NIC is required';
+    } else if (!/^(\d{9}[vVxX]|\d{12})$/.test(formData.nic)) {
+      newErrors.nic = 'Please enter a valid NIC number (e.g., 123456789V or 123456789012)';
+    }
+
+    // Administrative Information Validation
     if (!formData.gnDivisionId) newErrors.gnDivisionId = 'GN Division is required';
-    if (!formData.password) newErrors.password = 'Password is required';
-    if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
-    if (formData.password !== formData.confirmPassword) {
+
+    // Security Validation
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters long';
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
+    }
+    
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
-    if (!signatureDataUrl) newErrors.signature = 'Signature is required';
+
+    // Signature Validation
+    if (!signatureDataUrl) newErrors.signature = 'Digital signature is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -74,26 +130,42 @@ const GNRegistration: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Store registration data (in real app, this would be sent to backend)
-      const registrationData = {
-        ...formData,
-        signature: signatureDataUrl,
-        status: 'pending_approval',
-        submittedAt: new Date().toISOString()
+      const passwordHash = await bcrypt.hash(formData.password, 10);
+      // Prepare registration data according to CreateGnForm interface
+      const registrationData: CreateGnForm = {
+        email: formData.email.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        additionalData: {
+        nic: formData.nic.trim()},
+        phone: formData.phone.trim(),
+        role: UserRole.GN,
+        divisionId: formData.gnDivisionId, // Array as per your interface
+        passwordHash 
       };
-      
-      // Store in localStorage for demo purposes
-      const existingRegistrations = JSON.parse(localStorage.getItem('gnRegistrations') || '[]');
-      existingRegistrations.push({ ...registrationData, id: Date.now().toString() });
-      localStorage.setItem('gnRegistrations', JSON.stringify(existingRegistrations));
 
+      // TODO: Include signature data in the registration
+      // You might need to upload the signature first or include it in the registration data
+      // This depends on your backend API structure
+
+      // Call the real API service
+      const createdUser = await userApiService.createGN(registrationData);
+      
+      console.log('Registration successful:', createdUser);
+      
       setIsSubmitted(true);
       toast.success('Registration submitted successfully!');
-    } catch (error) {
-      toast.error('Registration failed. Please try again.');
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      
+      // Handle different types of errors
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else if (error.message) {
+        toast.error(error.message);
+      } else {
+        toast.error('Registration failed. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -151,28 +223,40 @@ const GNRegistration: React.FC = () => {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Full Name *</Label>
+                      <Label htmlFor="firstName">First Name *</Label>
                       <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
-                        placeholder="Enter your full name"
+                        id="firstName"
+                        value={formData.firstName}
+                        onChange={(e) => handleInputChange('firstName', e.target.value)}
+                        placeholder="Enter your first name"
                         disabled={isSubmitting}
                       />
-                      {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                      {errors.firstName && <p className="text-sm text-red-500">{errors.firstName}</p>}
                     </div>
-
+                    
                     <div className="space-y-2">
-                      <Label htmlFor="nic">NIC Number *</Label>
+                      <Label htmlFor="lastName">Last Name *</Label>
                       <Input
-                        id="nic"
-                        value={formData.nic}
-                        onChange={(e) => handleInputChange('nic', e.target.value)}
-                        placeholder="Enter your NIC number"
+                        id="lastName"
+                        value={formData.lastName}
+                        onChange={(e) => handleInputChange('lastName', e.target.value)}
+                        placeholder="Enter your last name"
                         disabled={isSubmitting}
                       />
-                      {errors.nic && <p className="text-sm text-red-500">{errors.nic}</p>}
+                      {errors.lastName && <p className="text-sm text-red-500">{errors.lastName}</p>}
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="nic">NIC Number *</Label>
+                    <Input
+                      id="nic"
+                      value={formData.nic}
+                      onChange={(e) => handleInputChange('nic', e.target.value.toUpperCase())}
+                      placeholder="Enter your NIC number (e.g., 123456789V or 123456789012)"
+                      disabled={isSubmitting}
+                    />
+                    {errors.nic && <p className="text-sm text-red-500">{errors.nic}</p>}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -195,7 +279,7 @@ const GNRegistration: React.FC = () => {
                         id="phone"
                         value={formData.phone}
                         onChange={(e) => handleInputChange('phone', e.target.value)}
-                        placeholder="07XXXXXXXX"
+                        placeholder="0771234567"
                         disabled={isSubmitting}
                       />
                       {errors.phone && <p className="text-sm text-red-500">{errors.phone}</p>}
@@ -211,18 +295,46 @@ const GNRegistration: React.FC = () => {
                   
                   <div className="space-y-2">
                     <Label htmlFor="gnDivision">GN Division *</Label>
-                    <Select onValueChange={(value) => handleInputChange('gnDivisionId', value)} disabled={isSubmitting}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your assigned GN Division" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mockDataService.mockGnDivisions.map((gnDivision) => (
-                          <SelectItem key={gnDivision.id} value={gnDivision.id}>
-                            {gnDivision.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    
+                    {isLoadingDivisions ? (
+                      <div className="flex items-center justify-center p-4 border rounded-md">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <span className="text-sm text-gray-600">Loading GN Divisions...</span>
+                      </div>
+                    ) : divisionsError ? (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="flex items-center justify-between">
+                          <span>{divisionsError}</span>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={loadDivisions}
+                            disabled={isLoadingDivisions}
+                          >
+                            Retry
+                          </Button>
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <Select 
+                        onValueChange={(value) => handleInputChange('gnDivisionId', value)} 
+                        disabled={isSubmitting || divisions.length === 0}
+                        value={formData.gnDivisionId}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your assigned GN Division" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {divisions.map((division) => (
+                            <SelectItem key={division.id} value={division.id}>
+                              {division.name} ({division.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    
                     {errors.gnDivisionId && <p className="text-sm text-red-500">{errors.gnDivisionId}</p>}
                   </div>
                 </div>
@@ -241,9 +353,12 @@ const GNRegistration: React.FC = () => {
                         type="password"
                         value={formData.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
-                        placeholder="Create a password"
+                        placeholder="Create a strong password"
                         disabled={isSubmitting}
                       />
+                      <p className="text-xs text-gray-500">
+                        Must be at least 8 characters with uppercase, lowercase, and number
+                      </p>
                       {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
                     </div>
 
@@ -277,6 +392,7 @@ const GNRegistration: React.FC = () => {
 
                 {Object.keys(errors).length > 0 && (
                   <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       Please fix the errors above before submitting.
                     </AlertDescription>
@@ -286,11 +402,11 @@ const GNRegistration: React.FC = () => {
                 <Button 
                   type="submit" 
                   className="w-full h-12"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isLoadingDivisions || !!divisionsError}
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
                       Submitting Registration...
                     </>
                   ) : (
