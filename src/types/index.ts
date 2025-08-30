@@ -1,6 +1,10 @@
 // Core Types for E-Document NIC System
 
-export type UserRole = 'DS' | 'GN';
+export enum UserRole  { 
+  DS = 'DS',
+  GN = 'GN',
+  STANDARD = 'STANDARD',
+};
 
 
 export interface User {
@@ -8,14 +12,32 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  passwordHash: string;
   phone: string;
   currentStatus: 'ACTIVE' | 'PENDING_APPROVAL' | 'REJECTED' | 'DEACTIVATED';
   role: UserRole;
+  additionalData?: Record<string , unknown>;
   gnDivisionId?: string;
+  divisionId?: string;
   gnDivisionName?: string;
   createdAt: string;
   updatedAt: string;
   active: boolean;
+}
+
+export interface CreateGnForm {
+  email: string;
+  firstName: string;
+  lastName: string;
+  passwordHash: string;
+  phone: string;
+  // currentStatus: 'ACTIVE' | 'PENDING_APPROVAL' | 'REJECTED' | 'DEACTIVATED';
+  role: UserRole;
+  additionalData?: {
+    nic?: string;
+    [key: string]: any;
+  };  
+  divisionId?: string;
 }
 
 export interface GnDivision {
@@ -143,12 +165,6 @@ export interface StatusUpdateForm {
   comment?: string;
 }
 
-export interface CreateGnForm {
-  email: string;
-  name: string;
-  gnDivisionId: string;
-  password: string;
-}
 
 // Theme types
 export type Theme = 'light' | 'dark' | 'system';
