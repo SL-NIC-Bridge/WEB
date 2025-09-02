@@ -20,6 +20,7 @@ import DSSettings from "./pages/DSSettings";
 import GNProfile from "./pages/GNProfile";
 import GNSettings from "./pages/GNSettings";
 import DSCreateDivision from "./pages/DSCreateDivision";
+import { UserRole } from "./types";
 
 const queryClient = new QueryClient();
 
@@ -41,7 +42,7 @@ const App = () => (
                 <Route
                   path="/gn"
                   element={
-                    <ProtectedRoute allowedRoles={["GN"]}>
+                    <ProtectedRoute allowedRoles={[UserRole.GN]}>
                       <AppHeader />
                       <GNDashboard />
                     </ProtectedRoute>
@@ -51,7 +52,7 @@ const App = () => (
                 <Route
                   path="/gn/applications"
                   element={
-                    <ProtectedRoute allowedRoles={["GN"]}>
+                    <ProtectedRoute allowedRoles={[UserRole.GN]}>
                       <AppHeader />
                       <GNApplications />
                     </ProtectedRoute>
@@ -61,7 +62,7 @@ const App = () => (
                 <Route
                   path="/ds"
                   element={
-                    <ProtectedRoute allowedRoles={["DS"]}>
+                    <ProtectedRoute allowedRoles={[UserRole.DS]}>
                       <AppHeader />
                       <DSDashboard />
                     </ProtectedRoute>
@@ -70,7 +71,7 @@ const App = () => (
                 <Route
                   path="/gn/profile"
                   element={
-                    <ProtectedRoute allowedRoles={["GN"]}>
+                    <ProtectedRoute allowedRoles={[UserRole.GN]}>
                       <AppHeader />
                       <GNProfile />
                     </ProtectedRoute>
@@ -80,7 +81,7 @@ const App = () => (
                 <Route
                   path="/gn/settings"
                   element={
-                    <ProtectedRoute allowedRoles={["GN"]}>
+                    <ProtectedRoute allowedRoles={[UserRole.GN]}>
                       <AppHeader />
                       <GNSettings />
                     </ProtectedRoute>
@@ -90,7 +91,7 @@ const App = () => (
                 <Route
                   path="/ds/gn-management"
                   element={
-                    <ProtectedRoute allowedRoles={["DS"]}>
+                    <ProtectedRoute allowedRoles={[UserRole.DS]}>
                       <AppHeader />
                       <DSGNManagement />
                     </ProtectedRoute>
@@ -98,7 +99,7 @@ const App = () => (
                 />
 
                 <Route path="/ds/create-division" element={
-                  <ProtectedRoute allowedRoles={['DS']}>
+                  <ProtectedRoute allowedRoles={[UserRole.DS]}>
                     <AppHeader />
                     <DSCreateDivision />
                   </ProtectedRoute>
@@ -107,7 +108,7 @@ const App = () => (
                 <Route
                   path="/ds/review/:applicationId"
                   element={
-                    <ProtectedRoute allowedRoles={["DS"]}>
+                    <ProtectedRoute allowedRoles={[UserRole.DS]}>
                       <AppHeader />
                       <DSReview />
                     </ProtectedRoute>
@@ -116,7 +117,7 @@ const App = () => (
                 <Route
                   path="/ds/profile"
                   element={
-                    <ProtectedRoute allowedRoles={["DS"]}>
+                    <ProtectedRoute allowedRoles={[UserRole.DS]}>
                       <AppHeader />
                       <DSProfile />
                     </ProtectedRoute>
@@ -126,7 +127,7 @@ const App = () => (
                 <Route
                   path="/ds/settings"
                   element={
-                    <ProtectedRoute allowedRoles={["DS"]}>
+                    <ProtectedRoute allowedRoles={[UserRole.DS]}>
                       <AppHeader />
                       <DSSettings />
                     </ProtectedRoute>
