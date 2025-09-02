@@ -130,7 +130,7 @@ const GNRegistration: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const passwordHash = await bcrypt.hash(formData.password, 10);
+     
       // Prepare registration data according to CreateGnForm interface
       const registrationData: CreateGnForm = {
         email: formData.email.trim(),
@@ -141,7 +141,7 @@ const GNRegistration: React.FC = () => {
         phone: formData.phone.trim(),
         role: UserRole.GN,
         divisionId: formData.gnDivisionId, // Array as per your interface
-        passwordHash 
+        password: formData.password,
       };
 
       // TODO: Include signature data in the registration
