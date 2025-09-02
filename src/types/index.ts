@@ -29,7 +29,8 @@ export interface CreateGnForm {
   email: string;
   firstName: string;
   lastName: string;
-  passwordHash: string;
+  //passwordHash: string;
+  password: string;
   phone: string;
   // currentStatus: 'ACTIVE' | 'PENDING_APPROVAL' | 'REJECTED' | 'DEACTIVATED';
   role: UserRole;
