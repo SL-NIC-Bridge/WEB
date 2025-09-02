@@ -205,11 +205,11 @@ const LoginPage: React.FC = () => {
                 <div className="grid grid-cols-1 gap-2 text-xs">
                   <div className="bg-gray-50 p-2 rounded text-center">
                     <div className="font-medium text-gray-700">DS Account</div>
-                    <div className="text-gray-600">admin@ds.gov.lk / password123</div>
+                    <div className="text-gray-600">ds@slnicbridge.lk / DSadmin@123</div>
                   </div>
                   <div className="bg-gray-50 p-2 rounded text-center">
                     <div className="font-medium text-gray-700">GN Account</div>
-                    <div className="text-gray-600">gn1@colombo.gov.lk / password123</div>
+                    <div className="text-gray-600">gn@slnicbridge.lk / GNadmin@123</div>
                   </div>
                 </div>
               </div>
