@@ -20,10 +20,10 @@ class AuthService {
     }
 
     // For GN users, check approval status
-    if (user.role === 'GN' && user.status !== 'approved') {
-      if (user.status === 'pending') {
+    if (user.role === 'GN' && user.currentStatus !== 'ACTIVE') {
+      if (user.currentStatus === 'PENDING_APPROVAL') {
         throw new Error('Account pending DS approval');
-      } else if (user.status === 'rejected') {
+      } else if (user.currentStatus === 'REJECTED') {
         throw new Error('Registration was rejected');
       }
     }
