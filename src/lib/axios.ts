@@ -17,7 +17,7 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Add auth token to requests
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -38,6 +38,13 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     // Log successful responses
     console.log(`✅ API Response: ${response.status} ${response.config.url}`);
+
+    const token = response.headers['Authorization']
+
+    if (token) {
+      localStorage.setItem('accessToken', token);
+    }
+
     return response;
   },
   async (error) => {
@@ -51,7 +58,7 @@ apiClient.interceptors.response.use(
         // Try to refresh token
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+          const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
             refreshToken,
           });
 

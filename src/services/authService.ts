@@ -19,11 +19,6 @@ class AuthService {
       throw new Error('Invalid credentials');
     }
 
-    // Check if user is active and approved
-    if (!user.active) {
-      throw new Error('Account is inactive');
-    }
-
     // For GN users, check approval status
     if (user.role === 'GN' && user.status !== 'approved') {
       if (user.status === 'pending') {
