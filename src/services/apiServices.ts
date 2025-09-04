@@ -14,6 +14,14 @@ import type {
   StatusUpdateForm,
 } from '@/types';
 
+
+interface PendingRegistration extends User {
+  division?: {
+    id: string;
+    name: string;
+    code: string;
+  };
+}
 // Authentication API Services
 export const authApiService = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
@@ -44,7 +52,7 @@ export const authApiService = {
   },
 };
 
-// User API Services
+
 export const userApiService = {
   getUsers: async (page = 1, limit = 10): Promise<PaginatedResponse<User>> => {
     const url = buildPaginatedUrl(API_PATHS.USERS.BASE, page, limit);
@@ -77,6 +85,73 @@ export const userApiService = {
 
   deleteUser: async (id: string): Promise<void> => {
     await apiClient.delete(API_PATHS.USERS.DELETE(id));
+  },
+
+  // GN MANAGEMENT METHODS
+  getPendingRegistrations: async (): Promise<PendingRegistration[]> => {
+    const response = await apiClient.get<ApiResponse<PendingRegistration[]>>(
+      API_PATHS.USERS.GET_PENDING_GN
+    );
+    return response.data.data;
+  },
+
+  getAllGNs: async (): Promise<User[]> => {
+    const response = await apiClient.get<ApiResponse<User[]>>(
+      API_PATHS.USERS.GET_ALL_GN
+    );
+    return response.data.data;
+  },
+
+  updateGNStatus: async (
+  userId: string, 
+  statusData: { status: string; comment?: string }
+): Promise<{ id: string; currentStatus: string; message: string }> => {
+  const response = await apiClient.put<ApiResponse<{ id: string; currentStatus: string; message: string }>>(
+    API_PATHS.USERS.UPDATE_GN_STATUS(userId),
+    {
+      currentStatus: statusData.status, // <-- map `status` to `currentStatus`
+      comment: statusData.comment,
+    }
+  );
+  return response.data.data;
+},
+
+
+  // CONVENIENCE METHODS (optional - these use the updateGNStatus method internally)
+  approveGN: async (userId: string, comment?: string) => {
+    return userApiService.updateGNStatus(userId, { 
+      status: 'ACTIVE', 
+      comment 
+    });
+  },
+
+  rejectGN: async (userId: string, comment?: string) => {
+    return userApiService.updateGNStatus(userId, { 
+      status: 'REJECTED', 
+      comment 
+    });
+  },
+
+  deactivateGN: async (userId: string, comment?: string) => {
+    return userApiService.updateGNStatus(userId, { 
+      status: 'DEACTIVATED', 
+      comment 
+    });
+  },
+
+  reactivateGN: async (userId: string, comment?: string) => {
+    return userApiService.updateGNStatus(userId, { 
+      status: 'ACTIVE', 
+      comment 
+    });
+  },
+
+  updateGN: async (id: string, gnData: Partial<User>): Promise<User> => {
+    const response = await apiClient.put<ApiResponse<User>>(
+      API_PATHS.USERS.UPDATE_GN(id),
+      gnData
+    );
+    return response.data.data;
   },
 };
 
