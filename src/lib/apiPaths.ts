@@ -10,13 +10,34 @@ export const API_PATHS = {
   },
 
   // User management endpoints
-  USERS: {
-    BASE: '/users',
-    GET_BY_ID: (id: string) => `/users/${id}`,
-    UPDATE: (id: string) => `/users/${id}`,
-    DELETE: (id: string) => `/users/${id}`,
-    CREATE_GN: '/users',
-  },
+  // USERS: {
+  //   BASE: '/users',
+  //   GET_BY_ID: (id: string) => `/users/${id}`,
+  //   UPDATE: (id: string) => `/users/${id}`,
+  //   DELETE: (id: string) => `/users/${id}`,
+  //   CREATE_GN: '/users',
+  //   PENDING_GN: '/users/gn/pending',
+  //   APPROVE_GN: (id: string) => `/users/gn/${id}/approve`,
+  //   REJECT_GN: (id: string) => `/users/gn/${id}/reject`,
+  //   GET_PENDING_GN: '/users/gn/pending',
+  //   GET_ALL_GN: '/users/gn/all',
+  //   UPDATE_GN: (id: string) => `/users/gn/${id}`,
+  // },
+
+  
+USERS: {
+  BASE: '/users',
+  GET_BY_ID: (id: string) => `/users/${id}`,
+  UPDATE: (id: string) => `/users/${id}`,
+  DELETE: (id: string) => `/users/${id}`,
+  CREATE_GN: '/users',
+  GET_PENDING_GN: '/users/gn/pending',
+  GET_ALL_GN: '/users/gn/all',
+  UPDATE_GN: (id: string) => `/users/gn/${id}`,
+  // NEW: Single endpoint for status updates
+  UPDATE_GN_STATUS: (id: string) => `/users/gn/${id}/status`,
+
+},
 
   // divisions (Division) management endpoints
   DIVISIONS: {
