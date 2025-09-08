@@ -17,7 +17,7 @@ const DSSettings: React.FC = () => {
   const { user } = state;
   
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    name: user?.firstName || '',
     email: user?.email || '',
     currentPassword: '',
     newPassword: '',
