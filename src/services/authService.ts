@@ -1,6 +1,7 @@
 // Mock Authentication Service
 import { LoginRequest, LoginResponse, User } from '@/types';
 import { mockUsers } from './mockData';
+import axios from 'axios';
 
 class AuthService {
   private async delay(ms: number): Promise<void> {
@@ -50,10 +51,7 @@ class AuthService {
     if (!token) {
       throw new Error('No token found');
     }
-
-    // Extract user ID from mock token (in real app, decode JWT)
-    const userId = token.split('-')[3];
-    const user = mockUsers.find(u => u.id === userId);
+    const user = await authService.getCurrentUser();
 
     if (!user) {
       throw new Error('User not found');

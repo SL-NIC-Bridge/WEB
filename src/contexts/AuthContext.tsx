@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { AuthState, User, LoginRequest } from '@/types';
-import { authService } from '@/services/authService';
-import { toast } from 'sonner';
 import { authApiService } from '@/services/apiServices';
+import { toast } from 'sonner';
 
 type AuthAction = 
   | { type: 'AUTH_START' }
@@ -70,7 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (token) {
         try {
           dispatch({ type: 'AUTH_START' });
-          const user = await authService.getCurrentUser();
+          const user = await authApiService.getCurrentUser();
           dispatch({ type: 'AUTH_SUCCESS', payload: user });
         } catch (error) {
           // Token is invalid, remove it
