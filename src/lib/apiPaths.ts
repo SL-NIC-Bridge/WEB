@@ -51,6 +51,7 @@ USERS: {
   // Application management endpoints
   APPLICATIONS: {
     BASE: '/applications',
+    GET_BY_DIVISION: (divisionId: string) => `/applications/division/${divisionId}`,
     GET_BY_ID: (id: string) => `/applications/${id}`,
     CREATE: '/applications',
     UPDATE: (id: string) => `/applications/${id}`,
