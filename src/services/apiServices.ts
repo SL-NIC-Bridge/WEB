@@ -210,9 +210,9 @@ export const applicationApiService = {
     return response.data.data;
   },
 
-  getApplicationsForGN: async (gnId: string): Promise<Application[]> => {
+  getApplicationsForDivision: async (divisionId: string): Promise<Application[]> => {
     const response = await apiClient.get<ApiResponse<Application[]>>(
-      API_PATHS.APPLICATIONS.GET_BY_GN(gnId)
+      API_PATHS.APPLICATIONS.GET_BY_DIVISION(divisionId)
     );
     return response.data.data;
   },

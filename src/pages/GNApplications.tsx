@@ -25,7 +25,8 @@ import {
 import StatusBadge from '@/components/shared/StatusBadge';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ApplicationViewer from '@/components/gn/ApplicationViewer';
-import { getApplicationsForGN, generateMockApplications } from '@/services/mockData';
+import { applicationApiService } from '@/services/apiServices';
+import { toast } from 'sonner';
 import { Application, ApplicationStatus } from '@/types';
 import { Search, FileText, Eye } from 'lucide-react';
 import { format } from 'date-fns';
@@ -38,16 +39,34 @@ const GNApplications: React.FC = () => {
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('all');
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [applications, setApplications] = useState<Application[]>([]);
 
   const user = state.user!;
 
-  // Get applications for this GN (including mock generated ones for demo)
+  // Load applications for this GN from API
+  React.useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const data = await applicationApiService.getApplicationsForDivision(user.division?.id || '');
+        if (!mounted) return;
+        setApplications(data || []);
+      } catch (err) {
+        toast.error('Failed to load applications');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, [user.id]);
+
   const baseApplications = useMemo(() => {
-    const assigned = getApplicationsForGN(user.id);
-    const generated = generateMockApplications(25).filter(app => app.gnDivisionId === user.gnDivisionId);
-    return [...assigned, ...generated];
-  }, [user.id, user.gnDivisionId]);
+    // Ensure apps are scoped to the GN's division when possible
+    return applications;
+  }, [applications, user.division?.id]);
 
   // Filter applications based on search and tab
   const filteredApplications = useMemo(() => {
@@ -58,20 +77,23 @@ const GNApplications: React.FC = () => {
       case 'new_nic':
         filtered = filtered.filter(app => app.applicationType === 'new_nic');
         break;
-      case 'verification':
-        filtered = filtered.filter(app => app.applicationType === 'document_verification');
+      case 'correction':
+        filtered = filtered.filter(app => app.applicationType === 'correct_nic');
+        break;
+       case 'replacement':
+        filtered = filtered.filter(app => app.applicationType === 'replace_nic');
         break;
       case 'received':
-        filtered = filtered.filter(app => ['submitted', 'received'].includes(app.status));
+        filtered = filtered.filter(app => app.currentStatus === ApplicationStatus.SUBMITTED);
         break;
       case 'under_review':
-        filtered = filtered.filter(app => app.status === 'read');
+        filtered = filtered.filter(app => app.currentStatus === ApplicationStatus.APPROVED_BY_GN);
         break;
       case 'on_hold':
-        filtered = filtered.filter(app => app.status === 'hold');
+        filtered = filtered.filter(app => app.currentStatus === ApplicationStatus.ON_HOLD_BY_DS);
         break;
       case 'confirmed':
-        filtered = filtered.filter(app => app.status === 'confirmed_by_gn');
+        filtered = filtered.filter(app => app.currentStatus === ApplicationStatus.SENT_TO_DRP);
         break;
       default:
         // 'all' - no additional filtering
@@ -82,9 +104,8 @@ const GNApplications: React.FC = () => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(app => 
-        app.applicantName.toLowerCase().includes(query) ||
-        (app.applicantNic && app.applicantNic.toLowerCase().includes(query)) ||
-        app.applicantPhone.includes(query) ||
+        app.user.firstName.toLowerCase().includes(query) ||
+        //(app.applicantNic && app.applicantNic.toLowerCase().includes(query)) ||
         app.id.toLowerCase().includes(query) ||
         app.applicationType.toLowerCase().includes(query)
       );
@@ -105,11 +126,12 @@ const GNApplications: React.FC = () => {
     return {
       all: baseApplications.length,
       new_nic: baseApplications.filter(app => app.applicationType === 'new_nic').length,
-      verification: baseApplications.filter(app => app.applicationType === 'document_verification').length,
-      received: baseApplications.filter(app => ['submitted', 'received'].includes(app.status)).length,
-      under_review: baseApplications.filter(app => app.status === 'read').length,
-      on_hold: baseApplications.filter(app => app.status === 'hold').length,
-      confirmed: baseApplications.filter(app => app.status === 'confirmed_by_gn').length,
+      correction: baseApplications.filter(app => app.applicationType === 'correct_nic').length,
+      replacement: baseApplications.filter(app => app.applicationType === 'replace_nic').length,
+      received: baseApplications.filter(app => app.currentStatus === ApplicationStatus.SUBMITTED).length,
+      under_review: baseApplications.filter(app => app.currentStatus === ApplicationStatus.APPROVED_BY_GN).length,
+      on_hold: baseApplications.filter(app => app.currentStatus === ApplicationStatus.ON_HOLD_BY_DS).length,
+      confirmed: baseApplications.filter(app => app.currentStatus === ApplicationStatus.SENT_TO_DRP).length,
     };
   }, [baseApplications]);
 
@@ -157,7 +179,7 @@ const GNApplications: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold">Applications</h1>
           <p className="text-muted-foreground">
-            Manage document verification requests for {user.gnDivisionName}
+            Manage document verification requests for {user.division?.name}
           </p>
         </div>
         <Badge variant="secondary" className="px-3 py-1">
@@ -193,15 +215,18 @@ const GNApplications: React.FC = () => {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="all">
                 All ({tabCounts.all})
               </TabsTrigger>
               <TabsTrigger value="new_nic">
                 New NIC ({tabCounts.new_nic})
               </TabsTrigger>
-              <TabsTrigger value="verification">
-                Verification ({tabCounts.verification})
+              <TabsTrigger value="correction">
+                Correction ({tabCounts.correction})
+              </TabsTrigger>
+              <TabsTrigger value="replacement">
+                Replacement ({tabCounts.replacement})
               </TabsTrigger>
               <TabsTrigger value="received">
                 Received ({tabCounts.received})
@@ -255,10 +280,10 @@ const GNApplications: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{application.applicantName}</div>
-                              <div className="text-sm text-muted-foreground">
+                              <div className="font-medium">{application.user.firstName}</div>
+                              {/* <div className="text-sm text-muted-foreground">
                                 {application.applicantNic ? `NIC: ${application.applicantNic}` : 'New NIC Application'}
-                              </div>
+                              </div> */}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -267,17 +292,17 @@ const GNApplications: React.FC = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">{application.applicantPhone}</div>
+                            <div className="text-sm">{application.user.phone}</div>
                           </TableCell>
                           <TableCell>
-                            <StatusBadge status={application.status} />
+                            <StatusBadge status={application.currentStatus} />
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">
-                              {format(new Date(application.submittedAt), 'MMM d, yyyy')}
+                              {format(new Date(application.createdAt), 'MMM d, yyyy')}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {format(new Date(application.submittedAt), 'h:mm a')}
+                              {format(new Date(application.updatedAt), 'h:mm a')}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">

@@ -17,9 +17,12 @@ export interface User {
   currentStatus: 'ACTIVE' | 'PENDING_APPROVAL' | 'REJECTED' | 'DEACTIVATED';
   role: UserRole;
   additionalData?: Record<string , unknown>;
-  gnDivisionId?: string;
   divisionId?: string;
-  gnDivisionName?: string;
+  division?:{
+    id: string;
+    name: string;
+    code: string;
+  }
   createdAt: string;
   updatedAt: string;
   active: boolean;
@@ -48,39 +51,65 @@ export interface GnDivision {
   createdAt: string;
 }
 
-export type ApplicationStatus = 
-  | 'submitted'
-  | 'received'
-  | 'read'
-  | 'confirmed_by_gn'
-  | 'sent_to_drp'
-  | 'completed'
-  | 'hold'
-  | 'rejected';
 
-export type ApplicationType = 'new_nic' | 'document_verification' | 'other';
+
+export type ApplicationType = 'new_nic' | 'replace_nic' | 'correct_nic' ;
+
+// export interface Application {
+//   id: string;
+//   applicantName: string;
+//   applicantNic?: string; // Optional for new NIC applications
+//   applicantPhone: string;
+//   applicationType: ApplicationType;
+//   gnDivisionId: string;
+//   gnDivisionName?: string;
+//   status: ApplicationStatus;
+//   submittedAt: string;
+//   assignedGnId?: string;
+//   assignedGnName?: string;
+//   dsId?: string;
+//   dsName?: string;
+//   currentPdfUrl?: string;
+//   signedPdfUrl?: string;
+//   createdAt: string;
+//   updatedAt: string;
+//   documents?: Document[];
+//   signatures?: Signature[];
+//   auditLogs?: AuditLog[];
+// }
+
+export enum ApplicationStatus {
+  SUBMITTED,
+  REJECTED_BY_GN,
+  APPROVED_BY_GN,
+  ON_HOLD_BY_DS,
+  SENT_TO_DRP
+}
+
 
 export interface Application {
+ 
   id: string;
-  applicantName: string;
-  applicantNic?: string; // Optional for new NIC applications
-  applicantPhone: string;
+  userId: string;
   applicationType: ApplicationType;
-  gnDivisionId: string;
-  gnDivisionName?: string;
-  status: ApplicationStatus;
-  submittedAt: string;
-  assignedGnId?: string;
-  assignedGnName?: string;
-  dsId?: string;
-  dsName?: string;
-  currentPdfUrl?: string;
-  signedPdfUrl?: string;
-  createdAt: string;
-  updatedAt: string;
-  documents?: Document[];
-  signatures?: Signature[];
-  auditLogs?: AuditLog[];
+  applicationData: any;
+  currentStatus: ApplicationStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
+  attachments: {
+    id: string;
+    attachmentType: string;
+    fileName: string;
+    fileUrl: string;
+    createdAt: Date;
+  }[];
 }
 
 export interface Document {

@@ -5,36 +5,66 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import { getApplicationsForGN, generateMockApplications } from '@/services/mockData';
-import { ApplicationStatus } from '@/types';
+import { applicationApiService, divisionApiService } from '@/services/apiServices';
+import { ApplicationStatus, Application } from '@/types';
+import { toast } from 'sonner';
 import { Clock, CheckCircle, AlertTriangle, Eye, ArrowRight, FileText } from 'lucide-react';
 
 const GNDashboard: React.FC = () => {
   const { state } = useAuth();
-  const [isLoading] = useState(false);
+    const user = state.user!;
+  const [isLoading, setIsLoading] = useState(false);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [divisionName, setDivisionName] = useState<string | undefined>(user.division?.name);
 
-  const user = state.user!;
 
-  // Get applications for this GN (including mock generated ones for demo)
-  const baseApplications = useMemo(() => {
-    const assigned = getApplicationsForGN(user.id);
-    const generated = generateMockApplications(25).filter(app => app.gnDivisionId === user.gnDivisionId);
-    return [...assigned, ...generated];
-  }, [user.id, user.gnDivisionId]);
+
+  // Load division info and applications for this GN's division
+  React.useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        if (user.division?.id) {
+          const [apps, division] = await Promise.all([
+            applicationApiService.getApplicationsForDivision(user.division.id),
+            divisionApiService.getGnDivisionById(user.division.id)
+          ]);
+          if (!mounted) return;
+          setApplications(apps || []);
+          setDivisionName(division?.name || user.division?.name);
+        } else {
+          // Fallback: load applications for GN by user id
+          const apps = await applicationApiService.getApplicationsForDivision(user.division?.id || '');
+          if (!mounted) return;
+          setApplications(apps || []);
+        }
+      } catch (err) {
+        toast.error('Failed to load dashboard data');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, [user.id, user.division?.id]);
+
+  const baseApplications = useMemo(() => applications, [applications]);
 
   // Get status counts for statistics
   const statusCounts = useMemo(() => {
     const counts = baseApplications.reduce((acc, app) => {
-      acc[app.status] = (acc[app.status] || 0) + 1;
+      const s = (app as any).currentStatus || (app as any).status;
+      acc[s] = (acc[s] || 0) + 1;
       return acc;
-    }, {} as Record<ApplicationStatus, number>);
-    
+    }, {} as Record<string, number>);
+
     return {
       total: baseApplications.length,
-      pending: (counts.submitted || 0) + (counts.received || 0),
-      review: (counts.read || 0),
-      confirmed: (counts.confirmed_by_gn || 0),
-      hold: (counts.hold || 0)
+      pending: (counts['SUBMITTED'] || 0),
+      review: (counts['APPROVED_BY_GN'] || 0),
+      confirmed: (counts['SENT_TO_DRP'] || 0),
+      hold: (counts['ON_HOLD_BY_DS'] || 0)
     };
   }, [baseApplications]);
 
@@ -53,7 +83,7 @@ const GNDashboard: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold">GN Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {user.name} • {user.gnDivisionName}
+            Welcome back, {user.firstName} • {divisionName || ''}
           </p>
         </div>
         <Badge variant="secondary" className="px-3 py-1">
