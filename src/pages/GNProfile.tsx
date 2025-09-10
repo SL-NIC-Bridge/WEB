@@ -24,7 +24,7 @@ const GNProfile: React.FC = () => {
             {user.firstName.split(' ').map(part => part[0]).join('').toUpperCase().slice(0, 2)}
           </div>
           <div>
-            <h1 className="text-3xl font-bold">{user.firstName}</h1>
+            <h1 className="text-3xl font-bold">{user.firstName} {user.lastName}</h1>
             <p className="text-muted-foreground">Grama Niladhari</p>
           </div>
         </div>
@@ -93,10 +93,10 @@ const GNProfile: React.FC = () => {
                 <Badge variant="secondary">Grama Niladhari</Badge>
               </div>
               
-              {user.gnDivisionName && (
+              {user.division?.name && (
                 <div>
                   <p className="text-sm font-medium mb-2">GN Division</p>
-                  <Badge variant="outline">{user.gnDivisionName}</Badge>
+                  <Badge variant="outline">{user.division?.name}</Badge>
                 </div>
               )}
               
