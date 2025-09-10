@@ -10,7 +10,7 @@ import { Pen, Upload, RotateCcw, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SignatureCanvasProps {
-  onSign: (signatureDataUrl: string) => Promise<void>;
+  onSign: (signatureDataUrl: string, signatureFile?: File) => Promise<void>;
 }
 
 const GNSignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSign }) => {
@@ -19,12 +19,14 @@ const GNSignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSign }) => {
   const [signatureType, setSignatureType] = useState<'draw' | 'upload'>('draw');
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+    const [uploadedImageData, setUploadedImageData] = useState<File | null>(null);
 
   const clearCanvas = () => {
     if (canvasRef.current) {
       canvasRef.current.clear();
     }
     setUploadedImage(null);
+    setUploadedImageData(null);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,6 +45,9 @@ const GNSignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSign }) => {
       return;
     }
 
+    //setUploadedImage (event.target.files[0] ? URL.createObjectURL(event.target.files[0]) : null);
+    setUploadedImageData(file);
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
@@ -59,7 +64,26 @@ const GNSignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSign }) => {
         toast.error('Please draw your signature first');
         return;
       }
+      
       signatureDataUrl = canvasRef.current.toDataURL('image/png');
+      const canvas = canvasRef.current.getCanvas();
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Add white background
+        ctx.globalCompositeOperation = 'destination-over';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        signatureDataUrl = canvas.toDataURL('image/png');
+      }
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], 'signature.png', { type: 'image/png' });
+          console.log('Generated file from canvas blob:', file);
+          setUploadedImage(URL.createObjectURL(file));
+          setUploadedImageData(file);
+        }
+      });
+      
     } else {
       if (!uploadedImage) {
         toast.error('Please upload a signature image');
@@ -71,7 +95,7 @@ const GNSignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSign }) => {
     setIsProcessing(true);
     
     try {
-      await onSign(signatureDataUrl);
+      await onSign(signatureDataUrl, uploadedImageData || undefined);
     } catch (error) {
       toast.error('Failed to apply signature');
     } finally {

@@ -26,6 +26,9 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
+const API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL; // Change this to your local backend URL
+
+
 interface ApplicationViewerProps {
   application: Application;
   onBack: () => void;
@@ -109,21 +112,55 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
     }
   };
 
-  const handleSign = async (signatureDataUrl: string) => {
-    setIsUpdatingStatus(true);
-    try {
-      const updated = await applicationApiService.signApplication(application.id, { signature: signatureDataUrl });
-      const updatedApp: Application = (updated as any).data || updated;
-      onUpdate(updatedApp);
-      setIsSignatureModalOpen(false);
-      toast.success('Document signed successfully');
-    } catch (err) {
-      console.error('Sign failed', err);
-      toast.error('Failed to sign document');
-    } finally {
-      setIsUpdatingStatus(false);
+  // const handleSign = async (signatureDataUrl: string, signatureFile?: File) => {
+  //   setIsUpdatingStatus(true);
+  //   try {
+  //     const updated = await applicationApiService.signApplication(application.id, { signature: signatureDataUrl });
+  //     const updatedApp: Application = (updated as any).data || updated;
+  //     onUpdate(updatedApp);
+  //     setIsSignatureModalOpen(false);
+  //     toast.success('Document signed successfully');
+  //   } catch (err) {
+  //     console.error('Sign failed', err);
+  //     toast.error('Failed to sign document');
+  //   } finally {
+  //     setIsUpdatingStatus(false);
+  //   }
+  // };
+
+
+  const handleSign = async (signatureDataUrl: string, signatureFile?: File) => {
+  setIsUpdatingStatus(true);
+
+  try {
+    const formData = new FormData();
+    formData.append("applicationId", application.id.toString());
+
+    if (signatureFile) {
+      // if user uploaded a file
+      formData.append("signature", signatureFile);
+    } else {
+      // fallback: convert dataURL to File
+      const res = await fetch(signatureDataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], "signature.png", { type: blob.type || "image/png" });
+      formData.append("signature", file);
     }
-  };
+
+    const updated = await applicationApiService.signApplication(application.id, formData);
+    const updatedApp: Application = (updated as any).data || updated;
+
+    onUpdate(updatedApp);
+    setIsSignatureModalOpen(false);
+    toast.success("Document signed successfully");
+  } catch (err) {
+    console.error("Sign failed", err);
+    toast.error("Failed to sign document");
+  } finally {
+    setIsUpdatingStatus(false);
+  }
+};
+
 
   const getStatusActions = () => {
     return allowedNextStatuses.map((status) => {
@@ -195,10 +232,10 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                   <label className="text-sm font-medium text-muted-foreground">Phone Number</label>
                   <p className="text-base">{application.user?.phone || (application as any).applicantPhone}</p>
                 </div>
-                <div>
+                {/* <div>
                   <label className="text-sm font-medium text-muted-foreground">Administrative Area</label>
-                  <Badge variant="outline">{(application as any).gnDivisionName || (application as any).user?.division?.name}</Badge>
-                </div>
+                  <Badge variant="outline">{application.user?.division?.name || (application as any).applicantDivision}</Badge>
+                </div> */}
                 {application.applicationType === 'new_nic' && (
                   <div className="md:col-span-2">
                     <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -223,7 +260,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
               <Tabs defaultValue="documents" className="w-full">
                 <TabsList>
                   <TabsTrigger value="documents">Documents</TabsTrigger>
-                  <TabsTrigger value="preview">Preview</TabsTrigger>
+                  {/* <TabsTrigger value="preview">Preview</TabsTrigger> */}
                 </TabsList>
                 
                 <TabsContent value="documents" className="space-y-4">
@@ -241,7 +278,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                       {documents.map((doc: any) => (
                         <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center space-x-3">
-                            {((doc.fileType || '').toLowerCase() === 'pdf' || (doc.originalFileUrl || '').toLowerCase().endsWith('.pdf')) ? (
+                            {((doc.fileType || '').toLowerCase() === 'pdf' || (doc.fileUrl || '').toLowerCase().endsWith('.pdf')) ? (
                               <FileText className="h-8 w-8 text-red-600" />
                             ) : (
                               <ImageIcon className="h-8 w-8 text-blue-600" />
@@ -256,11 +293,26 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                             </div>
                           </div>
                           <div className="flex space-x-2">
-                            <Button variant="outline" size="sm" onClick={() => window.open(doc.originalFileUrl || doc.fileUrl, '_blank')}>
+                            <Button variant="outline" size="sm" onClick={() => window.open(API_BASE_URL+doc.fileUrl, '_blank')}>
                               <Eye className="mr-2 h-4 w-4" />
                               View
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => window.open(doc.originalFileUrl || doc.fileUrl, '_blank')}>
+                            {/* <Button variant="outline" size="sm" onClick={() => window.open(doc.fileUrl || doc.fileUrl, '_blank')}>
+                              <Download className="mr-2 h-4 w-4" />
+                              Download
+                            </Button> */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = API_BASE_URL+doc.fileUrl;
+                                link.setAttribute('download', ''); // optional: you can pass a filename like 'document.pdf'
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                            >
                               <Download className="mr-2 h-4 w-4" />
                               Download
                             </Button>
@@ -271,7 +323,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                   )}
                 </TabsContent>
                 
-                <TabsContent value="preview" className="space-y-4">
+                {/* <TabsContent value="preview" className="space-y-4">
                   <div className="border rounded-lg bg-muted/30 aspect-[4/3] flex items-center justify-center">
                     <div className="text-center text-muted-foreground">
                       <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
@@ -279,7 +331,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                       <p className="text-sm">PDF and image viewer integration</p>
                     </div>
                   </div>
-                </TabsContent>
+                </TabsContent> */}
               </Tabs>
             </CardContent>
           </Card>

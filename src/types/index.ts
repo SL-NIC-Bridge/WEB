@@ -79,11 +79,12 @@ export type ApplicationType = 'new_nic' | 'replace_nic' | 'correct_nic' ;
 // }
 
 export enum ApplicationStatus {
-  SUBMITTED,
-  REJECTED_BY_GN,
-  APPROVED_BY_GN,
-  ON_HOLD_BY_DS,
-  SENT_TO_DRP
+  SUBMITTED='SUBMITTED',
+  REJECTED_BY_GN = 'REJECTED_BY_GN',
+  APPROVED_BY_GN = 'APPROVED_BY_GN',
+  REJECTED_BY_DS = 'REJECTED_BY_DS',
+  SENT_TO_DRP= 'SENT_TO_DRP',
+  ON_HOLD_BY_DS= 'ON_HOLD_BY_DS',
 }
 
 
@@ -102,6 +103,10 @@ export interface Application {
     lastName: string;
     email: string;
     phone: string;
+      division?: {
+      code:string;
+      name: string;
+    };
   };
   attachments: {
     id: string;
@@ -191,7 +196,7 @@ export interface PaginatedResponse<T = any> {
 
 // Form types
 export interface StatusUpdateForm {
-  toStatus: ApplicationStatus;
+  status: ApplicationStatus;
   comment?: string;
 }
 

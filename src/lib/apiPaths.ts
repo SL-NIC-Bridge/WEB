@@ -60,7 +60,9 @@ USERS: {
     GET_BY_GN: (gnId: string) => `/applications/gn/${gnId}`,
     GET_BY_DS: (dsId: string) => `/applications/ds/${dsId}`,
     UPLOAD_DOCUMENT: (id: string) => `/applications/${id}/documents`,
-    SIGN: (id: string) => `/applications/${id}/sign`,
+    //SIGN: (id: string) => `/applications/${id}/sign`,
+    SIGN: '/applications/sign',
+
   },
 
   // Document management endpoints
@@ -70,6 +72,7 @@ USERS: {
     GET_BY_APPLICATION: (applicationId: string) => `/documents/application/${applicationId}`,
     UPLOAD: '/documents/upload',
     DELETE: (id: string) => `/documents/${id}`,
+    
   },
 
   // Audit log endpoints

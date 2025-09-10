@@ -25,14 +25,14 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
 }) => {
   const getStatusConfig = (status: ApplicationStatus) => {
     switch (status) {
-      case 'submitted':
+      case 'SUBMITTED':
         return {
           variant: 'secondary' as const,
           className: 'status-submitted',
           label: 'Submitted',
           icon: FileText
         };
-      case 'received':
+      case 'SUBMITTED':
         return {
           variant: 'secondary' as const,
           className: 'status-received',
@@ -46,14 +46,14 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
           label: 'Under Review',
           icon: Eye
         };
-      case 'confirmed_by_gn':
+      case 'APPROVED_BY_GN':
         return {
           variant: 'default' as const,
           className: 'status-confirmed',
           label: 'GN Confirmed',
           icon: CheckCircle
         };
-      case 'sent_to_drp':
+      case 'SENT_TO_DRP':
         return {
           variant: 'default' as const,
           className: 'status-confirmed',
@@ -67,14 +67,14 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
           label: 'Completed',
           icon: Award
         };
-      case 'hold':
+      case 'ON_HOLD_BY_DS':
         return {
           variant: 'secondary' as const,
           className: 'status-hold',
           label: 'On Hold',
           icon: AlertTriangle
         };
-      case 'rejected':
+      case 'REJECTED_BY_GN':
         return {
           variant: 'destructive' as const,
           className: 'status-rejected',
