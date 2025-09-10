@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,23 +22,20 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import StatusBadge from '@/components/shared/StatusBadge';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import CreateGNForm from '@/components/ds/CreateGNForm';
-import { mockApplications, mockUsers, mockGnDivisions, generateMockApplications } from '@/services/mockData';
-import { Application, User } from '@/types';
+import { applicationApiService, userApiService, divisionApiService } from '@/services/apiServices';
+import { Application, ApplicationStatus, User, GnDivision } from '@/types';
 import { 
   Search, 
   FileText, 
   Users, 
   CheckCircle, 
   Send,
-  UserPlus,
   Building,
   Activity,
-  TrendingUp,
-  Eye
+  Eye,
+  AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -51,57 +48,124 @@ const DSDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
-  const [isCreateGNOpen, setIsCreateGNOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [reviewCurrentPage, setReviewCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // State for API data
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [allGNs, setAllGNs] = useState<User[]>([]);
+  const [divisions, setDivisions] = useState<GnDivision[]>([]);
 
   const user = state.user!;
 
-  // Get all applications and GNs for DS oversight - only GN confirmed applications
-  const allApplications = useMemo(() => {
-    const apps = [...mockApplications, ...generateMockApplications(25)];
-    return apps.filter(app => app.status === 'confirmed_by_gn' || app.status === 'sent_to_drp');
-  }, []);
+  const submittedApps = applications.filter(app => app.currentStatus === ApplicationStatus.SUBMITTED);
+const approvedApps = applications.filter(app => app.currentStatus === ApplicationStatus.APPROVED_BY_GN);
 
-  const allGNs = useMemo(() => {
-    return mockUsers.filter(u => u.role === 'GN');
-  }, []);
+
+  useEffect(() => {
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const [applicationsResponse, gnsResponse, divisionsResponse] = await Promise.all([
+        applicationApiService.getApplications(1, 1000),
+        userApiService.getAllGNs(),
+        divisionApiService.getGnDivisions(1, 1000)
+      ]);
+
+      // 👉 Only keep SUBMITTED for now
+      const filteredApps = applicationsResponse.data.filter(
+        (app) => app.currentStatus === ApplicationStatus.SUBMITTED
+      );
+
+      setApplications(filteredApps);
+      setAllGNs(gnsResponse);
+      setDivisions(divisionsResponse.data);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      setError('Failed to load dashboard data. Please try again.');
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  loadData();
+}, []);
+
+useEffect(() => {
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      if (activeTab === "all-applications") {
+        const res = await applicationApiService.getApplications(1, 1000, { status: "SUBMITTED" }); 
+        setApplications(res.data);
+      } else if (activeTab === "review") {
+        const res = await applicationApiService.getApplications(1, 1000, { status: "APPROVED_BY_GN" }); 
+        //setReviewApplications(res.data);
+      } else {
+        // overview → maybe load stats
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  loadData();
+}, [activeTab]);
+
+
+
+  // Filter applications that are confirmed by GN (APPROVED_BY_GN status)
+  const confirmedApplications = useMemo(() => {
+    return applications.filter(app => 
+      app.currentStatus === ApplicationStatus.SUBMITTED 
+      //app.currentStatus === ApplicationStatus.SENT_TO_DRP
+    );
+  }, [applications]);
+
+  console.log('Confirmed Applications:', confirmedApplications);
 
   // Filter applications based on search
   const filteredApplications = useMemo(() => {
-    if (!searchQuery.trim()) return allApplications;
+    if (!searchQuery.trim()) return confirmedApplications;
     
     const query = searchQuery.toLowerCase();
-    return allApplications.filter(app => 
-      app.applicantName.toLowerCase().includes(query) ||
-      (app.applicantNic && app.applicantNic.toLowerCase().includes(query)) ||
-      app.applicantPhone.includes(query) ||
-      app.id.toLowerCase().includes(query) ||
-      (app.gnDivisionName && app.gnDivisionName.toLowerCase().includes(query))
+    return confirmedApplications.filter(app => 
+      app.user.firstName.toLowerCase().includes(query) ||
+      app.user.lastName.toLowerCase().includes(query) ||
+      app.user.phone.includes(query) ||
+      app.id.toLowerCase().includes(query)
     );
-  }, [allApplications, searchQuery]);
+  }, [confirmedApplications, searchQuery]);
 
-  // Applications ready for DS review (confirmed by GN, not yet sent to DRP)
+  // Applications ready for DS review (APPROVED_BY_GN status only)
   const applicationsForReview = useMemo(() => {
-    return allApplications.filter(app => app.status === 'confirmed_by_gn');
-  }, [allApplications]);
+    return applications.filter(app => app.currentStatus === ApplicationStatus.APPROVED_BY_GN);
+  }, [applications]);
 
-  // Group applications by GN
-  const applicationsByGN = useMemo(() => {
+  // Group applications by division
+  const applicationsByDivision = useMemo(() => {
     const grouped = applicationsForReview.reduce((acc, app) => {
-      const gnName = app.assignedGnName || 'Unknown GN';
-      if (!acc[gnName]) {
-        acc[gnName] = [];
+      // Find division name from divisions array
+      const division = divisions.find(d => d.id === user.division?.id || '');
+      const divisionName = division?.name || 'Unknown Division';
+      
+      if (!acc[divisionName]) {
+        acc[divisionName] = [];
       }
-      acc[gnName].push(app);
+      acc[divisionName].push(app);
       return acc;
     }, {} as Record<string, Application[]>);
     
-    return Object.entries(grouped).map(([gnName, apps]) => ({
-      gnName,
+    return Object.entries(grouped).map(([divisionName, apps]) => ({
+      divisionName,
       applications: apps
     }));
-  }, [applicationsForReview]);
+  }, [applicationsForReview, divisions]);
 
   // Pagination for review tab
   const totalReviewPages = Math.ceil(applicationsForReview.length / ITEMS_PER_PAGE);
@@ -119,28 +183,33 @@ const DSDashboard: React.FC = () => {
 
   // Statistics
   const stats = useMemo(() => {
-    const statusCounts = allApplications.reduce((acc, app) => {
-      acc[app.status] = (acc[app.status] || 0) + 1;
+    const statusCounts = applications.reduce((acc, app) => {
+      acc[app.currentStatus] = (acc[app.currentStatus] || 0) + 1;
       return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<ApplicationStatus, number>);
 
     return {
-      totalApplications: allApplications.length,
+      totalApplications: confirmedApplications.length,
       totalGNs: allGNs.length,
       readyForReview: applicationsForReview.length,
-      sentToDRP: statusCounts.sent_to_drp || 0,
+      sentToDRP: statusCounts[ApplicationStatus.SENT_TO_DRP] || 0,
     };
-  }, [allApplications, allGNs, applicationsForReview]);
+  }, [applications, allGNs, applicationsForReview, confirmedApplications]);
 
   const handleSendToDRP = async (applicationId: string) => {
     try {
-      // In a real app, this would make an API call
-      console.log('Sending application to DRP:', applicationId);
+      await applicationApiService.updateApplicationStatus(applicationId, {
+        status: ApplicationStatus.SENT_TO_DRP,
+        comment: 'Application approved by DS and sent to DRP'
+      });
+      
       toast.success('Application sent to DRP successfully');
       
-      // Here you would normally update the application status in your state management
-      // For now, we'll just show the success message
+      // Refresh applications
+      const applicationsResponse = await applicationApiService.getApplications(1, 1000);
+      setApplications(applicationsResponse.data);
     } catch (error) {
+      console.error('Error sending application to DRP:', error);
       toast.error('Failed to send application to DRP');
     }
   };
@@ -157,6 +226,32 @@ const DSDashboard: React.FC = () => {
     setReviewCurrentPage(page);
   };
 
+  const getApplicationTypeBadge = (type: string) => {
+    const typeMap = {
+      'new_nic': 'New NIC',
+      'replace_nic': 'Replace NIC',
+      'correct_nic': 'Correct NIC'
+    };
+    return typeMap[type as keyof typeof typeMap] || type;
+  };
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+            <p className="text-lg font-semibold text-red-700 mb-2">Error Loading Dashboard</p>
+            <p className="text-muted-foreground text-center mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6 space-y-6 animate-fade-in">
       {/* Header */}
@@ -164,486 +259,430 @@ const DSDashboard: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold">DS Administrative Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {user.firstName} • System Overview & GN Management
+            Welcome back, {user.firstName} • System Overview & Application Management
           </p>
         </div>
         <div className="flex items-center space-x-2">
           <Badge variant="default" className="px-3 py-1">
             {stats.totalGNs} Active GNs
           </Badge>
-          {/* <Dialog open={isCreateGNOpen} onOpenChange={setIsCreateGNOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary-hover">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Create GN Account
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Grama Niladhari Account</DialogTitle>
-              </DialogHeader>
-              <CreateGNForm onClose={() => setIsCreateGNOpen(false)} />
-            </DialogContent>
-          </Dialog> */}
         </div>
       </div>
 
-      {/* Statistics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <Activity className="h-8 w-8 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Confirmed Applications</p>
-                <p className="text-2xl font-bold">{stats.totalApplications}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-8 w-8 text-blue-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Ready for Review</p>
-                <p className="text-2xl font-bold">{stats.readyForReview}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <Send className="h-8 w-8 text-green-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Sent to DRP</p>
-                <p className="text-2xl font-bold">{stats.sentToDRP}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <Users className="h-8 w-8 text-purple-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Active GNs</p>
-                <p className="text-2xl font-bold">{stats.totalGNs}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="review">Ready for Review ({stats.readyForReview})</TabsTrigger>
-          {/* <TabsTrigger value="gn-management">GN Management</TabsTrigger> */}
-          <TabsTrigger value="all-applications">All Applications</TabsTrigger>
-        </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Applications by GN */}
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <LoadingSpinner size="lg" />
+        </div>
+      ) : (
+        <>
+          {/* Statistics Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Applications by GN</CardTitle>
-                <CardDescription>Applications grouped by Grama Niladhari</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {applicationsByGN.slice(0, 5).map(({ gnName, applications }) => (
-                    <div key={gnName} className="flex items-center justify-between p-3 border rounded">
-                      <div>
-                        <p className="font-medium">{gnName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {applications.length} application{applications.length !== 1 ? 's' : ''} ready
-                        </p>
-                      </div>
-                      <Badge variant="secondary">{applications.length}</Badge>
-                    </div>
-                  ))}
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <Activity className="h-8 w-8 text-primary" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Confirmed Applications</p>
+                    <p className="text-2xl font-bold">{stats.totalApplications}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* GnDivision Distribution */}
             <Card>
-              <CardHeader>
-                <CardTitle>Area Distribution</CardTitle>
-                <CardDescription>Applications by administrative area</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {mockGnDivisions.map((gnDivision) => {
-                    const count = allApplications.filter(app => app.gnDivisionId === gnDivision.id).length;
-                    const percentage = allApplications.length > 0 ? (count / allApplications.length) * 100 : 0;
-                    
-                    return (
-                      <div key={gnDivision.id} className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium">{gnDivision.name}</span>
-                          <span className="text-muted-foreground">{count} applications</span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div 
-                            className="bg-primary h-2 rounded-full transition-all" 
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-8 w-8 text-blue-600" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Ready for Review</p>
+                    <p className="text-2xl font-bold">{stats.readyForReview}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <Send className="h-8 w-8 text-green-600" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Sent to DRP</p>
+                    <p className="text-2xl font-bold">{stats.sentToDRP}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <Users className="h-8 w-8 text-purple-600" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Active GNs</p>
+                    <p className="text-2xl font-bold">{stats.totalGNs}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
 
-        {/* Ready for Review Tab */}
-        <TabsContent value="review" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Applications Ready for DS Review</CardTitle>
-              <CardDescription>
-                Applications confirmed by GN and awaiting DS approval to send to DRP
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Application ID</TableHead>
-                      <TableHead>Applicant</TableHead>
-                      <TableHead>GN / Area</TableHead>
-                      <TableHead>GN Confirmed</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedReviewApplications.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8">
-                          <div className="text-muted-foreground">
-                            No applications pending DS review
+          {/* Main Content Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="review">Ready for Review ({stats.readyForReview})</TabsTrigger>
+              <TabsTrigger value="all-applications">All Applications</TabsTrigger>
+            </TabsList>
+
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Applications by Division */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Applications by Division</CardTitle>
+                    <CardDescription>Applications grouped by administrative division</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {applicationsByDivision.slice(0, 5).map(({ divisionName, applications }) => (
+                        <div key={divisionName} className="flex items-center justify-between p-3 border rounded">
+                          <div>
+                            <p className="font-medium">{divisionName}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {applications.length} application{applications.length !== 1 ? 's' : ''} ready
+                            </p>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paginatedReviewApplications.map((app) => (
-                        <TableRow key={app.id}>
-                          <TableCell>
-                            <div className="font-mono text-sm">
-                              {app.id.split('-').pop()?.toUpperCase()}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{app.applicantName}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {app.applicantPhone}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium text-sm">{app.assignedGnName}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {app.gnDivisionName}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
-                              {format(new Date(app.updatedAt), 'MMM d, yyyy h:mm a')}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end space-x-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleReviewApplication(app.id)}
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                Review
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleSendToDRP(app.id)}
-                                className="bg-primary hover:bg-primary-hover"
-                              >
-                                <Send className="mr-2 h-4 w-4" />
-                                Send to DRP
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                          <Badge variant="secondary">{applications.length}</Badge>
+                        </div>
+                      ))}
+                      {applicationsByDivision.length === 0 && (
+                        <p className="text-muted-foreground text-center py-4">
+                          No applications pending review
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
 
-              {/* Review Pagination */}
-              {totalReviewPages > 1 && (
-                <div className="mt-6 flex justify-center">
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious 
-                          onClick={() => handleReviewPageChange(Math.max(1, reviewCurrentPage - 1))}
-                          className={reviewCurrentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                        />
-                      </PaginationItem>
-                      
-                      {[...Array(totalReviewPages)].map((_, index) => {
-                        const page = index + 1;
-                        if (page === 1 || page === totalReviewPages || Math.abs(page - reviewCurrentPage) <= 1) {
-                          return (
-                            <PaginationItem key={page}>
-                              <PaginationLink
-                                onClick={() => handleReviewPageChange(page)}
-                                isActive={reviewCurrentPage === page}
-                                className="cursor-pointer"
-                              >
-                                {page}
-                              </PaginationLink>
-                            </PaginationItem>
-                          );
-                        } else if (page === 2 || page === totalReviewPages - 1) {
-                          return (
-                            <PaginationItem key={page}>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                          );
-                        }
-                        return null;
-                      })}
-                      
-                      <PaginationItem>
-                        <PaginationNext 
-                          onClick={() => handleReviewPageChange(Math.min(totalReviewPages, reviewCurrentPage + 1))}
-                          className={reviewCurrentPage === totalReviewPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* GN Management Tab */}
-        <TabsContent value="gn-management" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Grama Niladhari Management</CardTitle>
-              <CardDescription>
-                Manage GN accounts, permissions, and area assignments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Assigned Area</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {allGNs.map((gn) => {
-                      const applicationCount = allApplications.filter(app => app.assignedGnId === gn.id).length;
-                      
-                      return (
-                        <TableRow key={gn.id}>
-                          <TableCell>
-                            <div className="font-medium">{gn.firstName}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {applicationCount} applications assigned
+                {/* Division Distribution */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Division Distribution</CardTitle>
+                    <CardDescription>Applications by administrative division</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {divisions.map((division) => {
+                        const count = confirmedApplications.filter(app => user.division?.id || '').length;
+                        const percentage = confirmedApplications.length > 0 ? (count / confirmedApplications.length) * 100 : 0;
+                        
+                        return (
+                          <div key={division.id} className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium">{division.name}</span>
+                              <span className="text-muted-foreground">{count} applications</span>
                             </div>
-                          </TableCell>
-                          <TableCell>{gn.email}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{gn.gnDivisionName}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={gn.active ? "default" : "secondary"}>
-                              {gn.active ? "Active" : "Inactive"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {format(new Date(gn.createdAt), 'MMM d, yyyy')}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end space-x-2">
-                              <Button variant="outline" size="sm">
-                                Edit
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                Reset Password
-                              </Button>
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-primary h-2 rounded-full transition-all" 
+                                style={{ width: `${percentage}%` }}
+                              />
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* All Applications Tab */}
-        <TabsContent value="all-applications" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Confirmed Applications</CardTitle>
-              <CardDescription>
-                Complete overview of all confirmed applications in the system
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-2 mb-6">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search applications..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Button variant="outline">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Export
-                </Button>
-              </div>
-
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Applicant</TableHead>
-                      <TableHead>GN / Area</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Updated</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedApplications.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8">
-                          <div className="text-muted-foreground">
-                            {searchQuery ? 'No applications found matching your search.' : 'No confirmed applications found.'}
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paginatedApplications.map((app) => (
-                        <TableRow key={app.id}>
-                          <TableCell>
-                            <div className="font-mono text-sm">
-                              {app.id.split('-').pop()?.toUpperCase()}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{app.applicantName}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {app.applicantPhone}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium text-sm">{app.assignedGnName}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {app.gnDivisionName}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <StatusBadge status={app.status} />
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
-                              {format(new Date(app.updatedAt), 'MMM d, yyyy h:mm a')}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* All Applications Pagination */}
-              {totalPages > 1 && (
-                <div className="mt-6 flex justify-center">
-                  <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious 
-                          onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                        />
-                      </PaginationItem>
-                      
-                      {[...Array(totalPages)].map((_, index) => {
-                        const page = index + 1;
-                        if (page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1) {
-                          return (
-                            <PaginationItem key={page}>
-                              <PaginationLink
-                                onClick={() => handlePageChange(page)}
-                                isActive={currentPage === page}
-                                className="cursor-pointer"
-                              >
-                                {page}
-                              </PaginationLink>
-                            </PaginationItem>
-                          );
-                        } else if (page === 2 || page === totalPages - 1) {
-                          return (
-                            <PaginationItem key={page}>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                          );
-                        }
-                        return null;
+                        );
                       })}
-                      
-                      <PaginationItem>
-                        <PaginationNext 
-                          onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Ready for Review Tab */}
+            <TabsContent value="review" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Applications Ready for DS Review</CardTitle>
+                  <CardDescription>
+                    Applications confirmed by GN and awaiting DS approval to send to DRP
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Application ID</TableHead>
+                          <TableHead>Applicant</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Division</TableHead>
+                          <TableHead>GN Confirmed</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedReviewApplications.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-8">
+                              <div className="text-muted-foreground">
+                                No applications pending DS review
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          paginatedReviewApplications.map((app) => {
+                            const division = divisions.find(d => d.id === user.division?.id || '');
+                            return (
+                              <TableRow key={app.id}>
+                                <TableCell>
+                                  <div className="font-mono text-sm">
+                                    {app.id.slice(-8).toUpperCase()}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div>
+                                    <div className="font-medium">{app.user.firstName} {app.user.lastName}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {app.user.phone}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline">
+                                    {getApplicationTypeBadge(app.applicationType)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">
+                                    {division?.name || 'Unknown Division'}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">
+                                    {format(new Date(app.updatedAt), 'MMM d, yyyy h:mm a')}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end space-x-2">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => handleReviewApplication(app.id)}
+                                    >
+                                      <Eye className="mr-2 h-4 w-4" />
+                                      Review
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      onClick={() => handleSendToDRP(app.id)}
+                                      className="bg-primary hover:bg-primary-hover"
+                                    >
+                                      <Send className="mr-2 h-4 w-4" />
+                                      Send to DRP
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Review Pagination */}
+                  {totalReviewPages > 1 && (
+                    <div className="mt-6 flex justify-center">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious 
+                              onClick={() => handleReviewPageChange(Math.max(1, reviewCurrentPage - 1))}
+                              className={reviewCurrentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                            />
+                          </PaginationItem>
+                          
+                          {[...Array(totalReviewPages)].map((_, index) => {
+                            const page = index + 1;
+                            if (page === 1 || page === totalReviewPages || Math.abs(page - reviewCurrentPage) <= 1) {
+                              return (
+                                <PaginationItem key={page}>
+                                  <PaginationLink
+                                    onClick={() => handleReviewPageChange(page)}
+                                    isActive={reviewCurrentPage === page}
+                                    className="cursor-pointer"
+                                  >
+                                    {page}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              );
+                            } else if (page === 2 || page === totalReviewPages - 1) {
+                              return (
+                                <PaginationItem key={page}>
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              );
+                            }
+                            return null;
+                          })}
+                          
+                          <PaginationItem>
+                            <PaginationNext 
+                              onClick={() => handleReviewPageChange(Math.min(totalReviewPages, reviewCurrentPage + 1))}
+                              className={reviewCurrentPage === totalReviewPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* All Applications Tab */}
+            <TabsContent value="all-applications" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Confirmed Applications</CardTitle>
+                  <CardDescription>
+                    Complete overview of all confirmed applications in the system
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center space-x-2 mb-6">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search applications..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <Button variant="outline">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Export
+                    </Button>
+                  </div>
+
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>Applicant</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Division</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Updated</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedApplications.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-8">
+                              <div className="text-muted-foreground">
+                                {searchQuery ? 'No applications found matching your search.' : 'No confirmed applications found.'}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          paginatedApplications.map((app) => {
+                            const division = divisions.find(d => d.id === user.division?.id || '');
+                            return (
+                              <TableRow key={app.id}>
+                                <TableCell>
+                                  <div className="font-mono text-sm">
+                                    {app.id.slice(-8).toUpperCase()}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div>
+                                    <div className="font-medium">{app.user.firstName} {app.user.lastName}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {app.user.phone}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline">
+                                    {getApplicationTypeBadge(app.applicationType)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">
+                                    {division?.name || 'Unknown Division'}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <StatusBadge status={app.currentStatus} />
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">
+                                    {format(new Date(app.updatedAt), 'MMM d, yyyy h:mm a')}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* All Applications Pagination */}
+                  {totalPages > 1 && (
+                    <div className="mt-6 flex justify-center">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious 
+                              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                              className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                            />
+                          </PaginationItem>
+                          
+                          {[...Array(totalPages)].map((_, index) => {
+                            const page = index + 1;
+                            if (page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1) {
+                              return (
+                                <PaginationItem key={page}>
+                                  <PaginationLink
+                                    onClick={() => handlePageChange(page)}
+                                    isActive={currentPage === page}
+                                    className="cursor-pointer"
+                                  >
+                                    {page}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              );
+                            } else if (page === 2 || page === totalPages - 1) {
+                              return (
+                                <PaginationItem key={page}>
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              );
+                            }
+                            return null;
+                          })}
+                          
+                          <PaginationItem>
+                            <PaginationNext 
+                              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </>
+      )}
     </div>
   );
 };
