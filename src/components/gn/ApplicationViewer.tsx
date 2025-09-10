@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Application, ApplicationStatus, ApplicationType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,8 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatusBadge from '@/components/shared/StatusBadge';
+import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import SignatureCanvas from './SignatureCanvas';
-import { getDocumentsForApplication, getAuditLogsForApplication } from '@/services/mockData';
+import { applicationApiService, documentApiService, auditLogApiService } from '@/services/apiServices';
 import { 
   ArrowLeft, 
   FileText, 
@@ -40,56 +41,68 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
   const [statusComment, setStatusComment] = useState('');
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
 
-  const documents = getDocumentsForApplication(application.id);
-  const auditLogs = getAuditLogsForApplication(application.id);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(true);
 
-  const allowedNextStatuses = getAllowedStatusTransitions(application.status);
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setIsLoadingDocs(true);
+      try {
+        // try documents endpoint first
+        const docs = await documentApiService.getDocumentsForApplication(application.id);
+        const logs = await auditLogApiService.getAuditLogsForApplication(application.id);
+        if (!mounted) return;
+        setDocuments(docs || []);
+        setAuditLogs(logs || []);
+      } catch (err) {
+        console.error('Failed to load documents/audit logs', err);
+        // fallback to attachments on application object if available
+        if (mounted) {
+          setDocuments((application as any).attachments || []);
+          setAuditLogs([]);
+        }
+      } finally {
+        if (mounted) setIsLoadingDocs(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, [application.id]);
+
+  const allowedNextStatuses = getAllowedStatusTransitions(application.currentStatus);
 
   function getAllowedStatusTransitions(currentStatus: ApplicationStatus): ApplicationStatus[] {
+    // Simplified transitions tailored to backend ApplicationStatus enum
+    //console.log('currentStatus', currentStatus);
     switch (currentStatus) {
-      case 'submitted':
-        return ['received', 'hold', 'rejected'];
-      case 'received':
-        return ['read', 'hold', 'rejected'];
-      case 'read':
-        return ['confirmed_by_gn', 'hold', 'rejected'];
-      case 'hold':
-        return ['read', 'rejected'];
+      case ApplicationStatus.SUBMITTED:
+        return [ApplicationStatus.APPROVED_BY_GN, ApplicationStatus.REJECTED_BY_GN];
+      case ApplicationStatus.APPROVED_BY_GN:
+        return [ApplicationStatus.REJECTED_BY_GN];
       default:
         return [];
     }
   }
 
   const handleStatusUpdate = async (newStatus: ApplicationStatus) => {
-    if ((newStatus === 'hold' || newStatus === 'rejected') && !statusComment.trim()) {
-      toast.error('Please provide a reason for this action');
+    if ((newStatus === ApplicationStatus.REJECTED_BY_GN) && !statusComment.trim()) {
+      toast.error('Please provide a reason for rejection');
       return;
     }
 
     setIsUpdatingStatus(true);
-    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const updatedApplication: Application = {
-        ...application,
-        status: newStatus,
-        updatedAt: new Date().toISOString()
-      };
-
-      onUpdate(updatedApplication);
+      const payload = { status: newStatus, comment: statusComment };
+      const updated = await applicationApiService.updateApplicationStatus(application.id, payload as any);
+      // updated may be ApiResponse-wrapped or raw Application
+      const updatedApp: Application = (updated as any).data || updated;
+      onUpdate(updatedApp);
       setStatusComment('');
-      toast.success(`Application status updated to ${newStatus}`);
-      
-      // Show appropriate message based on action
-      if (newStatus === 'hold') {
-        toast.info('Hold notification will be sent to applicant');
-      } else if (newStatus === 'rejected') {
-        toast.info('Rejection notification will be sent to applicant');
-      }
-      
-    } catch (error) {
+      toast.success('Application status updated');
+    } catch (err) {
+      console.error('Failed to update status', err);
       toast.error('Failed to update application status');
     } finally {
       setIsUpdatingStatus(false);
@@ -97,64 +110,41 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
   };
 
   const handleSign = async (signatureDataUrl: string) => {
+    setIsUpdatingStatus(true);
     try {
-      // Simulate signature process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const updatedApplication: Application = {
-        ...application,
-        signedPdfUrl: `/mock-files/signed-${application.id}.pdf`,
-        updatedAt: new Date().toISOString()
-      };
-
-      onUpdate(updatedApplication);
+      const updated = await applicationApiService.signApplication(application.id, { signature: signatureDataUrl });
+      const updatedApp: Application = (updated as any).data || updated;
+      onUpdate(updatedApp);
       setIsSignatureModalOpen(false);
-      toast.success('Document signed successfully!');
-      
-    } catch (error) {
+      toast.success('Document signed successfully');
+    } catch (err) {
+      console.error('Sign failed', err);
       toast.error('Failed to sign document');
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
   const getStatusActions = () => {
-    const actions = [];
-    
-    for (const status of allowedNextStatuses) {
-      let variant: "default" | "destructive" | "outline" | "secondary" = "outline";
-      let icon = null;
-      
-      if (status === 'confirmed_by_gn') {
-        variant = "default";
-        icon = <CheckCircle className="mr-2 h-4 w-4" />;
-      } else if (status === 'hold') {
-        variant = "secondary";
-        icon = <AlertTriangle className="mr-2 h-4 w-4" />;
-      } else if (status === 'rejected') {
-        variant = "destructive";
-        icon = <XCircle className="mr-2 h-4 w-4" />;
-      } else if (status === 'received' || status === 'read') {
-        variant = "outline";
-        icon = <Eye className="mr-2 h-4 w-4" />;
+    return allowedNextStatuses.map((status) => {
+      if (status === ApplicationStatus.APPROVED_BY_GN) {
+        return (
+          <Button key={String(status)} variant="default" onClick={() => handleStatusUpdate(status)} disabled={isUpdatingStatus}>
+            <CheckCircle className="mr-2 h-4 w-4" /> Confirm & Approve
+          </Button>
+        );
       }
 
-      actions.push(
-        <Button
-          key={status}
-          variant={variant}
-          onClick={() => handleStatusUpdate(status)}
-          disabled={isUpdatingStatus}
-        >
-          {icon}
-          {status === 'confirmed_by_gn' ? 'Confirm & Approve' : 
-           status === 'received' ? 'Mark as Received' :
-           status === 'read' ? 'Mark as Reviewed' :
-           status === 'hold' ? 'Put on Hold' : 
-           'Reject Application'}
-        </Button>
-      );
-    }
+      if (status === ApplicationStatus.REJECTED_BY_GN) {
+        return (
+          <Button key={String(status)} variant="destructive" onClick={() => handleStatusUpdate(status)} disabled={isUpdatingStatus}>
+            <XCircle className="mr-2 h-4 w-4" /> Reject Application
+          </Button>
+        );
+      }
 
-    return actions;
+      return null;
+    });
   };
 
   return (
@@ -169,10 +159,10 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
           <h1 className="text-2xl font-bold">Application Details</h1>
           <p className="text-muted-foreground">
             ID: {application.id.split('-').pop()?.toUpperCase()} • 
-            Submitted {format(new Date(application.submittedAt), 'MMM d, yyyy h:mm a')}
+            Submitted {application.createdAt && format((application.createdAt as any), 'MMM d, yyyy h:mm a')}
           </p>
         </div>
-        <StatusBadge status={application.status} size="lg" />
+  <StatusBadge status={application.currentStatus} size="lg" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -187,7 +177,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Full Name</label>
-                  <p className="text-base font-medium">{application.applicantName}</p>
+                  <p className="text-base font-medium">{application.user?.firstName} {application.user?.lastName}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Application Type</label>
@@ -195,19 +185,19 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                     {application.applicationType === 'new_nic' ? 'New NIC Application' : 'Document Verification'}
                   </Badge>
                 </div>
-                {application.applicantNic && (
+                {(application.applicationData && (application.applicationData.nic || (application as any).applicantNic)) && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">NIC Number</label>
-                    <p className="text-base font-mono">{application.applicantNic}</p>
+                    <p className="text-base font-mono">{application.applicationData?.nic || (application as any).applicantNic}</p>
                   </div>
                 )}
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Phone Number</label>
-                  <p className="text-base">{application.applicantPhone}</p>
+                  <p className="text-base">{application.user?.phone || (application as any).applicantPhone}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Administrative Area</label>
-                  <Badge variant="outline">{application.gnDivisionName}</Badge>
+                  <Badge variant="outline">{(application as any).gnDivisionName || (application as any).user?.division?.name}</Badge>
                 </div>
                 {application.applicationType === 'new_nic' && (
                   <div className="md:col-span-2">
@@ -237,17 +227,21 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                 </TabsList>
                 
                 <TabsContent value="documents" className="space-y-4">
-                  {documents.length === 0 ? (
+                  {isLoadingDocs ? (
+                    <div className="text-center py-8">
+                      <LoadingSpinner size="sm" />
+                    </div>
+                  ) : documents.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>No documents uploaded</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {documents.map((doc) => (
+                      {documents.map((doc: any) => (
                         <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center space-x-3">
-                            {doc.fileType === 'pdf' ? (
+                            {((doc.fileType || '').toLowerCase() === 'pdf' || (doc.originalFileUrl || '').toLowerCase().endsWith('.pdf')) ? (
                               <FileText className="h-8 w-8 text-red-600" />
                             ) : (
                               <ImageIcon className="h-8 w-8 text-blue-600" />
@@ -257,16 +251,16 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                                 {doc.fileType === 'pdf' ? 'Birth Certificate (PDF)' : 'Supporting Photo'}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                Uploaded {format(new Date(doc.uploadedAt), 'MMM d, yyyy h:mm a')}
+                                Uploaded {format(new Date(doc.uploadedAt || doc.createdAt || doc.created_at), 'MMM d, yyyy h:mm a')}
                               </p>
                             </div>
                           </div>
                           <div className="flex space-x-2">
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => window.open(doc.originalFileUrl || doc.fileUrl, '_blank')}>
                               <Eye className="mr-2 h-4 w-4" />
                               View
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => window.open(doc.originalFileUrl || doc.fileUrl, '_blank')}>
                               <Download className="mr-2 h-4 w-4" />
                               Download
                             </Button>
@@ -291,17 +285,17 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
           </Card>
 
           {/* Status Actions */}
-          {allowedNextStatuses.length > 0 && (
+          {getAllowedStatusTransitions(application.currentStatus).length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Actions</CardTitle>
                 <CardDescription>Update application status or add comments</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {(allowedNextStatuses.includes('hold') || allowedNextStatuses.includes('rejected')) && (
+                {(allowedNextStatuses.includes(ApplicationStatus.REJECTED_BY_GN)) && (
                   <div>
                     <label className="text-sm font-medium mb-2 block">
-                      Comment (required for hold/reject)
+                      Comment (required for reject)
                     </label>
                     <Textarea
                       placeholder="Provide reason for hold or rejection..."
@@ -320,7 +314,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
           )}
 
           {/* E-Signature Section */}
-          {application.status === 'read' && (
+          {application.currentStatus === ApplicationStatus.SUBMITTED && (
             <Card>
               <CardHeader>
                 <CardTitle>Digital Signature</CardTitle>
@@ -329,7 +323,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
               <CardContent>
                 <div className="flex items-center justify-between">
                   <div>
-                    {application.signedPdfUrl ? (
+                    {(application as any).signedPdfUrl ? (
                       <div className="flex items-center space-x-2 text-green-600">
                         <CheckCircle className="h-5 w-5" />
                         <span>Document signed</span>
@@ -343,11 +337,11 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                   <Dialog open={isSignatureModalOpen} onOpenChange={setIsSignatureModalOpen}>
                     <DialogTrigger asChild>
                       <Button 
-                        disabled={!!application.signedPdfUrl}
+                        disabled={!!(application as any).signedPdfUrl}
                         className="bg-primary hover:bg-primary-hover"
                       >
                         <Signature className="mr-2 h-4 w-4" />
-                        {application.signedPdfUrl ? 'Signed' : 'Sign Document'}
+                        {(application as any).signedPdfUrl ? 'Signed' : 'Sign Document'}
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-2xl">
@@ -383,7 +377,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                     </div>
                     <div className="flex-1 pb-4">
                       <div className="flex items-center space-x-2 mb-1">
-                        <StatusBadge status={log.toStatus} size="sm" />
+                        <StatusBadge status={log.status} size="sm" />
                         <span className="text-xs text-muted-foreground">
                           {format(new Date(log.createdAt), 'MMM d, h:mm a')}
                         </span>
@@ -418,7 +412,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Submitted</span>
-                <span className="text-sm">{format(new Date(application.submittedAt), 'MMM d')}</span>
+                <span className="text-sm">{application.createdAt && format(new Date(application.createdAt as any), 'MMM d')}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Last Updated</span>
