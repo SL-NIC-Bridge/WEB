@@ -10,19 +10,25 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Settings, User, Bell, Shield, Palette, Save } from 'lucide-react';
 
+// ✅ Import your user API
+import { userApiService } from '@/services/apiServices';
+
 const GNSettings: React.FC = () => {
   const { state } = useAuth();
   const { theme, setTheme } = useTheme();
   const { user } = state;
   
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
     email: user?.email || '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
   
+  const [loading, setLoading] = useState(false);
+
   const [notifications, setNotifications] = useState({
     emailUpdates: true,
     applicationStatus: true,
@@ -43,8 +49,27 @@ const GNSettings: React.FC = () => {
     }));
   };
 
-  const handleSaveProfile = () => {
-    toast.success('Profile updated successfully');
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+
+      const updateGN = await userApiService.updateGN(user.id, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email
+      });
+
+      // ✅ update context state so UI reflects changes
+     // dispatch({ type: 'SET_USER', payload: updatedUser });
+
+      toast.success('Profile updated successfully');
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChangePassword = () => {
@@ -87,15 +112,24 @@ const GNSettings: React.FC = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="firstName">First Name</Label>
                   <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
+                    id="firstName"
+                    name="firstName"
+                    value={formData.firstName}
                     onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="email">Email Address</Label>
                   <Input
                     id="email"
@@ -106,9 +140,9 @@ const GNSettings: React.FC = () => {
                   />
                 </div>
               </div>
-              <Button onClick={handleSaveProfile} className="w-full md:w-auto">
+              <Button onClick={handleSaveProfile} className="w-full md:w-auto" disabled={loading}>
                 <Save className="h-4 w-4 mr-2" />
-                Save Profile
+                {loading ? 'Saving...' : 'Save Profile'}
               </Button>
             </CardContent>
           </Card>
