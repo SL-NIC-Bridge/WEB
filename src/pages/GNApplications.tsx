@@ -51,7 +51,7 @@ const GNApplications: React.FC = () => {
       setIsLoading(true);
       try {
         const data = await applicationApiService.getApplicationsForDivision(user.division?.id || '');
-        if (!mounted) return;
+        // if (!mounted) return;
         setApplications(data || []);
       } catch (err) {
         toast.error('Failed to load applications');
@@ -105,7 +105,7 @@ const GNApplications: React.FC = () => {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(app => 
         app.user.firstName.toLowerCase().includes(query) ||
-        //(app.applicantNic && app.applicantNic.toLowerCase().includes(query)) ||
+        app.user.lastName.toLowerCase().includes(query) ||
         app.id.toLowerCase().includes(query) ||
         app.applicationType.toLowerCase().includes(query)
       );
@@ -141,7 +141,10 @@ const GNApplications: React.FC = () => {
 
   const handleApplicationUpdate = (updatedApplication: Application) => {
     setSelectedApplication(updatedApplication);
-    // In a real app, this would trigger a refetch of the applications list
+    // Update the applications list with the updated application
+    setApplications(prev => 
+      prev.map(app => app.id === updatedApplication.id ? updatedApplication : app)
+    );
   };
 
   const handlePageChange = (page: number) => {
@@ -280,15 +283,16 @@ const GNApplications: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{application.user.firstName}</div>
-                              {/* <div className="text-sm text-muted-foreground">
-                                {application.applicantNic ? `NIC: ${application.applicantNic}` : 'New NIC Application'}
-                              </div> */}
+                              <div className="font-medium">{application.user.firstName} {application.user.lastName}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {application.applicationType === 'new_nic' ? 'New NIC Application' : 'Document Update'}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <Badge variant={application.applicationType === 'new_nic' ? 'default' : 'secondary'}>
-                              {application.applicationType === 'new_nic' ? 'New NIC' : 'Verification'}
+                              {application.applicationType === 'new_nic' ? 'New NIC' : 
+                               application.applicationType === 'correct_nic' ? 'Correction' : 'Replacement'}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -307,6 +311,7 @@ const GNApplications: React.FC = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="sm">
+                              <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </Button>
                           </TableCell>
