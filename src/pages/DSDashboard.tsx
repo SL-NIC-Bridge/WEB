@@ -53,119 +53,112 @@ const DSDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // State for API data
-  const [applications, setApplications] = useState<Application[]>([]);
+  // State for API data - now we store ALL applications
+  const [allApplications, setAllApplications] = useState<Application[]>([]);
   const [allGNs, setAllGNs] = useState<User[]>([]);
   const [divisions, setDivisions] = useState<GnDivision[]>([]);
 
   const user = state.user!;
 
-  const submittedApps = applications.filter(app => app.currentStatus === ApplicationStatus.SUBMITTED);
-const approvedApps = applications.filter(app => app.currentStatus === ApplicationStatus.APPROVED_BY_GN);
+  // Filter applications by status on the frontend
+  const relevantStatusesForDS = [
+    ApplicationStatus.SUBMITTED,
+    ApplicationStatus.APPROVED_BY_GN, 
+    ApplicationStatus.ON_HOLD_BY_DS, 
+    ApplicationStatus.SENT_TO_DRP
+  ];
 
-
-  useEffect(() => {
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const [applicationsResponse, gnsResponse, divisionsResponse] = await Promise.all([
-        applicationApiService.getApplications(1, 1000),
-        userApiService.getAllGNs(),
-        divisionApiService.getGnDivisions(1, 1000)
-      ]);
-
-      // 👉 Only keep SUBMITTED for now
-      const filteredApps = applicationsResponse.data.filter(
-        (app) => app.currentStatus === ApplicationStatus.SUBMITTED
-      );
-
-      setApplications(filteredApps);
-      setAllGNs(gnsResponse);
-      setDivisions(divisionsResponse.data);
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      setError('Failed to load dashboard data. Please try again.');
-      toast.error('Failed to load dashboard data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  loadData();
-}, []);
-
-useEffect(() => {
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      if (activeTab === "all-applications") {
-        const res = await applicationApiService.getApplications(1, 1000, { status: "SUBMITTED" }); 
-        setApplications(res.data);
-      } else if (activeTab === "review") {
-        const res = await applicationApiService.getApplications(1, 1000, { status: "APPROVED_BY_GN" }); 
-        //setReviewApplications(res.data);
-      } else {
-        // overview → maybe load stats
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  loadData();
-}, [activeTab]);
-
-
-
-  // Filter applications that are confirmed by GN (APPROVED_BY_GN status)
-  const confirmedApplications = useMemo(() => {
-    return applications.filter(app => 
-      app.currentStatus === ApplicationStatus.SUBMITTED 
-      //app.currentStatus === ApplicationStatus.SENT_TO_DRP
+  // Filter applications that are relevant for DS
+  const relevantApplications = useMemo(() => {
+    return allApplications.filter(app => 
+      relevantStatusesForDS.includes(app.currentStatus)
     );
-  }, [applications]);
+  }, [allApplications]);
 
-  console.log('Confirmed Applications:', confirmedApplications);
+  // Applications by status
+  const submittedApps = useMemo(() => 
+    relevantApplications.filter(app => app.currentStatus === ApplicationStatus.SUBMITTED),
+    [relevantApplications]
+  );
+
+  const approvedApps = useMemo(() => 
+    relevantApplications.filter(app => app.currentStatus === ApplicationStatus.APPROVED_BY_GN),
+    [relevantApplications]
+  );
+
+  const onHoldApps = useMemo(() => 
+    relevantApplications.filter(app => app.currentStatus === ApplicationStatus.ON_HOLD_BY_DS),
+    [relevantApplications]
+  );
+
+  const sentToDRPApps = useMemo(() => 
+    relevantApplications.filter(app => app.currentStatus === ApplicationStatus.SENT_TO_DRP),
+    [relevantApplications]
+  );
+
+  // Applications ready for DS review (APPROVED_BY_GN status only)
+  const applicationsForReview = useMemo(() => {
+    return relevantApplications.filter(app => app.currentStatus === ApplicationStatus.APPROVED_BY_GN);
+  }, [relevantApplications]);
+
+  // Data source based on active tab
+  const getDataSourceForTab = useMemo(() => {
+    switch (activeTab) {
+      case 'all-applications':
+        return relevantApplications;
+      case 'review':
+        return applicationsForReview;
+      case 'overview':
+      default:
+        return relevantApplications;
+    }
+  }, [activeTab, relevantApplications, applicationsForReview]);
 
   // Filter applications based on search
   const filteredApplications = useMemo(() => {
-    if (!searchQuery.trim()) return confirmedApplications;
+    const dataSource = getDataSourceForTab;
+    
+    if (!searchQuery.trim()) return dataSource;
     
     const query = searchQuery.toLowerCase();
-    return confirmedApplications.filter(app => 
+    return dataSource.filter(app => 
       app.user.firstName.toLowerCase().includes(query) ||
       app.user.lastName.toLowerCase().includes(query) ||
       app.user.phone.includes(query) ||
       app.id.toLowerCase().includes(query)
     );
-  }, [confirmedApplications, searchQuery]);
+  }, [getDataSourceForTab, searchQuery]);
 
-  // Applications ready for DS review (APPROVED_BY_GN status only)
-  const applicationsForReview = useMemo(() => {
-    return applications.filter(app => app.currentStatus === ApplicationStatus.APPROVED_BY_GN);
-  }, [applications]);
+  // Statistics
+  const stats = useMemo(() => {
+    return {
+      totalApplications: relevantApplications.length,
+      totalGNs: allGNs.length,
+      readyForReview: approvedApps.length,
+      sentToDRP: sentToDRPApps.length,
+    };
+  }, [relevantApplications, allGNs, approvedApps, sentToDRPApps]);
 
   // Group applications by division
   const applicationsByDivision = useMemo(() => {
-    const grouped = applicationsForReview.reduce((acc, app) => {
-      // Find division name from divisions array
-      const division = divisions.find(d => d.id === user.division?.id || '');
-      const divisionName = division?.name || 'Unknown Division';
-      
-      if (!acc[divisionName]) {
-        acc[divisionName] = [];
-      }
-      acc[divisionName].push(app);
-      return acc;
-    }, {} as Record<string, Application[]>);
-    
-    return Object.entries(grouped).map(([divisionName, apps]) => ({
-      divisionName,
-      applications: apps
-    }));
-  }, [applicationsForReview, divisions]);
+  const grouped = applicationsForReview.reduce((acc, app) => {
+    // app.divisionId should come from your Application type
+    const division = divisions.find(d => d.id === app.user.division?.code || '');
+    const divisionName = division?.name || "Unknown Division";
+
+    if (!acc[divisionName]) {
+      acc[divisionName] = [];
+    }
+    acc[divisionName].push(app);
+    return acc;
+  }, {} as Record<string, Application[]>);
+
+  return Object.entries(grouped).map(([divisionName, apps]) => ({
+    divisionName,
+    applications: apps
+  }));
+}, [applicationsForReview, divisions]);
+
 
   // Pagination for review tab
   const totalReviewPages = Math.ceil(applicationsForReview.length / ITEMS_PER_PAGE);
@@ -181,20 +174,42 @@ useEffect(() => {
     return filteredApplications.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredApplications, currentPage]);
 
-  // Statistics
-  const stats = useMemo(() => {
-    const statusCounts = applications.reduce((acc, app) => {
-      acc[app.currentStatus] = (acc[app.currentStatus] || 0) + 1;
-      return acc;
-    }, {} as Record<ApplicationStatus, number>);
+  // Load all data once on component mount
+  useEffect(() => {
+    const loadAllData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-    return {
-      totalApplications: confirmedApplications.length,
-      totalGNs: allGNs.length,
-      readyForReview: applicationsForReview.length,
-      sentToDRP: statusCounts[ApplicationStatus.SENT_TO_DRP] || 0,
+        // Make single API call to get ALL applications (no status filter)
+        const [applicationsResponse, gnsResponse, divisionsResponse] = await Promise.all([
+          applicationApiService.getApplications(1, 10000), // Get a large number to get all applications
+          userApiService.getAllGNs(),
+          divisionApiService.getGnDivisions(1, 1000)
+        ]);
+
+        console.log('All Applications loaded:', applicationsResponse.data);
+        
+        setAllApplications(applicationsResponse.data);
+        setAllGNs(gnsResponse);
+        setDivisions(divisionsResponse.data);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        setError('Failed to load dashboard data. Please try again.');
+        toast.error('Failed to load dashboard data');
+      } finally {
+        setIsLoading(false);
+      }
     };
-  }, [applications, allGNs, applicationsForReview, confirmedApplications]);
+
+    loadAllData();
+  }, []); // Only run once on component mount
+
+  // Reset page when tab changes
+  useEffect(() => {
+    setCurrentPage(1);
+    setReviewCurrentPage(1);
+  }, [activeTab]);
 
   const handleSendToDRP = async (applicationId: string) => {
     try {
@@ -205,9 +220,15 @@ useEffect(() => {
       
       toast.success('Application sent to DRP successfully');
       
-      // Refresh applications
-      const applicationsResponse = await applicationApiService.getApplications(1, 1000);
-      setApplications(applicationsResponse.data);
+      // Update the specific application in state instead of refetching all
+        setAllApplications(prev =>
+        prev.map(app =>
+          app.id === applicationId
+            ? { ...app, currentStatus: ApplicationStatus.SENT_TO_DRP, updatedAt: new Date() }
+            : app
+        )
+      );
+
     } catch (error) {
       console.error('Error sending application to DRP:', error);
       toast.error('Failed to send application to DRP');
@@ -282,7 +303,7 @@ useEffect(() => {
                 <div className="flex items-center space-x-2">
                   <Activity className="h-8 w-8 text-primary" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Confirmed Applications</p>
+                    <p className="text-sm text-muted-foreground">Total Applications</p>
                     <p className="text-2xl font-bold">{stats.totalApplications}</p>
                   </div>
                 </div>
@@ -335,17 +356,16 @@ useEffect(() => {
             </TabsList>
 
             {/* Overview Tab */}
-            <TabsContent value="overview" className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Applications by Division */}
-                <Card>
+             <TabsContent value="overview" className="space-y-4">
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Applications by Division */}                 <Card>
                   <CardHeader>
                     <CardTitle>Applications by Division</CardTitle>
                     <CardDescription>Applications grouped by administrative division</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {applicationsByDivision.slice(0, 5).map(({ divisionName, applications }) => (
+                   </CardHeader>
+                   <CardContent>
+                     <div className="space-y-4">
+                       {applicationsByDivision.slice(0, 5).map(({ divisionName, applications }) => (
                         <div key={divisionName} className="flex items-center justify-between p-3 border rounded">
                           <div>
                             <p className="font-medium">{divisionName}</p>
@@ -374,8 +394,13 @@ useEffect(() => {
                   <CardContent>
                     <div className="space-y-4">
                       {divisions.map((division) => {
-                        const count = confirmedApplications.filter(app => user.division?.id || '').length;
-                        const percentage = confirmedApplications.length > 0 ? (count / confirmedApplications.length) * 100 : 0;
+                        // const count = filteredApplications.filter(app => user.division?.id || '').length;
+                        // const percentage = filteredApplications.length > 0 ? (count / filteredApplications.length) * 100 : 0;
+                        const count = filteredApplications.filter(app => app.user.division?.code === division.id).length;
+                        const percentage = filteredApplications.length > 0 
+                          ? (count / filteredApplications.length) * 100 
+                          : 0;
+
                         
                         return (
                           <div key={division.id} className="space-y-2">
@@ -397,6 +422,8 @@ useEffect(() => {
                 </Card>
               </div>
             </TabsContent>
+
+
 
             {/* Ready for Review Tab */}
             <TabsContent value="review" className="space-y-4">
@@ -454,7 +481,8 @@ useEffect(() => {
                                 </TableCell>
                                 <TableCell>
                                   <div className="text-sm">
-                                    {division?.name || 'Unknown Division'}
+                                    {/* {division?.name || 'Unknown Division'} */}
+                                    {app.user.division?.name || 'Unknown Division'}
                                   </div>
                                 </TableCell>
                                 <TableCell>
@@ -544,9 +572,9 @@ useEffect(() => {
             <TabsContent value="all-applications" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>All Confirmed Applications</CardTitle>
+                  <CardTitle>All Applications</CardTitle>
                   <CardDescription>
-                    Complete overview of all confirmed applications in the system
+                    Complete overview of all applications relevant to DS
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -583,7 +611,7 @@ useEffect(() => {
                           <TableRow>
                             <TableCell colSpan={6} className="text-center py-8">
                               <div className="text-muted-foreground">
-                                {searchQuery ? 'No applications found matching your search.' : 'No confirmed applications found.'}
+                                {searchQuery ? 'No applications found matching your search.' : 'No applications found.'}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -612,7 +640,7 @@ useEffect(() => {
                                 </TableCell>
                                 <TableCell>
                                   <div className="text-sm">
-                                    {division?.name || 'Unknown Division'}
+                                    {app.user.division?.name || 'Unknown Division'}
                                   </div>
                                 </TableCell>
                                 <TableCell>
