@@ -83,6 +83,40 @@ export const userApiService = {
     return response.data.data;
   },
 
+    // New method to handle GN creation with signature file upload
+  createGNWithSignature: async (formData: FormData): Promise<User> => {
+    const response = await apiClient.post<ApiResponse<User>>(
+      API_PATHS.USERS.CREATE_GN_WITH_SIGNATURE,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Update only the profile fields we allow here (firstName, lastName).
+   * This convenience method ensures email is not changed by callers.
+   */
+  updateProfile: async (
+    id: string,
+    profile: { firstName?: string; lastName?: string }
+  ): Promise<User> => {
+    const payload: Partial<User> = {};
+    if (profile.firstName !== undefined) payload.firstName = profile.firstName;
+    if (profile.lastName !== undefined) payload.lastName = profile.lastName;
+
+    // Use the main update endpoint to persist the profile changes.
+    const response = await apiClient.put<ApiResponse<User>>(
+      API_PATHS.USERS.UPDATE(id),
+      payload
+    );
+    return response.data.data;
+  },
+
   deleteUser: async (id: string): Promise<void> => {
     await apiClient.delete(API_PATHS.USERS.DELETE(id));
   },
@@ -243,13 +277,29 @@ export const applicationApiService = {
     return response.data.data;
   },
 
-  signApplication: async (id: string, signatureData: any): Promise<Application> => {
-    const response = await apiClient.post<ApiResponse<Application>>(
-      API_PATHS.APPLICATIONS.SIGN(id),
-      signatureData
-    );
-    return response.data.data;
-  },
+  // signApplication: async (id: string, signatureData: any): Promise<Application> => {
+  //   const response = await apiClient.post<ApiResponse<Application>>(
+  //     API_PATHS.APPLICATIONS.SIGN(id),
+  //     signatureData
+  //   );
+  //   return response.data.data;
+  // },
+
+  signApplication: async (id: string, formData: FormData): Promise<Application> => {
+  const response = await apiClient.post<ApiResponse<Application>>(
+    API_PATHS.APPLICATIONS.SIGN,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return response.data.data;
+
+  
+},
+
 };
 
 // Document API Services

@@ -36,6 +36,7 @@ USERS: {
   UPDATE_GN: (id: string) => `/users/gn/${id}`,
   // NEW: Single endpoint for status updates
   UPDATE_GN_STATUS: (id: string) => `/users/gn/${id}/status`,
+  CREATE_GN_WITH_SIGNATURE: '/users/gn/with-signature',
 
 },
 
@@ -62,6 +63,7 @@ USERS: {
     UPLOAD_DOCUMENT: (id: string) => `/applications/${id}/documents`,
     //SIGN: (id: string) => `/applications/${id}/sign`,
     SIGN: '/applications/sign',
+    
 
   },
 
