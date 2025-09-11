@@ -112,22 +112,6 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
     }
   };
 
-  // const handleSign = async (signatureDataUrl: string, signatureFile?: File) => {
-  //   setIsUpdatingStatus(true);
-  //   try {
-  //     const updated = await applicationApiService.signApplication(application.id, { signature: signatureDataUrl });
-  //     const updatedApp: Application = (updated as any).data || updated;
-  //     onUpdate(updatedApp);
-  //     setIsSignatureModalOpen(false);
-  //     toast.success('Document signed successfully');
-  //   } catch (err) {
-  //     console.error('Sign failed', err);
-  //     toast.error('Failed to sign document');
-  //   } finally {
-  //     setIsUpdatingStatus(false);
-  //   }
-  // };
-
 
   const handleSign = async (signatureDataUrl: string, signatureFile?: File) => {
   setIsUpdatingStatus(true);
