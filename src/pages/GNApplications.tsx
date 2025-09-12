@@ -260,7 +260,7 @@ const GNApplications: React.FC = () => {
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  {/* <TableBody>
                     {paginatedApplications.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-8">
@@ -319,6 +319,51 @@ const GNApplications: React.FC = () => {
                       ))
                     )}
                   </TableBody>
+                  
+                  */}
+
+                  <TableBody>
+  {paginatedApplications.length === 0 ? (
+    <TableRow>
+      <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+        No applications found
+      </TableCell>
+    </TableRow>
+  ) : (
+    paginatedApplications.map((app) => (
+      <TableRow key={app.id} className="hover:bg-muted/50 cursor-pointer">
+        <TableCell>{app.id}</TableCell>
+        <TableCell>
+          {app.user.firstName} {app.user.lastName}
+        </TableCell>
+        <TableCell className="capitalize">{app.applicationType.replace(/_/g, " ")}</TableCell>
+        <TableCell>
+          <div className="flex flex-col">
+            <span>{app.user.phone}</span>
+            <span className="text-sm text-muted-foreground">{app.user.email}</span>
+          </div>
+        </TableCell>
+        <TableCell>
+          <StatusBadge status={app.currentStatus} />
+        </TableCell>
+        <TableCell>
+          {format(new Date(app.createdAt), "yyyy-MM-dd HH:mm")}
+        </TableCell>
+        <TableCell className="text-right">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => handleApplicationClick(app)}
+          >
+            <Eye className="h-4 w-4 mr-1" />
+            View
+          </Button>
+        </TableCell>
+      </TableRow>
+    ))
+  )}
+</TableBody>
+
                 </Table>
               </div>
 
