@@ -200,8 +200,8 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                   <label className="text-sm font-medium text-muted-foreground">Full Name</label>
                   <p className="text-base font-medium">{application.user?.firstName} {application.user?.lastName}</p>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Application Type</label> 
+                <div >
+                  <label className="text-sm font-medium text-muted-foreground mr-4">Application Type</label> 
                   <Badge variant={application.applicationType === 'new_nic' ? 'default' : 'secondary'}>
                     {application.applicationType === 'new_nic' ? 'New NIC Application' : 'Document Verification'}
                   </Badge>
@@ -259,7 +259,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {documents.map((doc: any) => (
+                      {documents.filter((doc) => doc.attachmentType !== 'CERTIFY_SIGNATURE').map((doc: any) => (
                         <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center space-x-3">
                             {((doc.fileType || '').toLowerCase() === 'pdf' || (doc.fileUrl || '').toLowerCase().endsWith('.pdf')) ? (

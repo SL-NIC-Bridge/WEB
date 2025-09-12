@@ -421,7 +421,7 @@ const DSReview: React.FC = () => {
                   <p className="font-medium">{application.user.firstName} {application.user.lastName}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Application Type</Label>
+                  <Label className="text-sm font-medium text-muted-foreground mr-4">Application Type</Label>
                   <Badge variant={application.applicationType === 'new_nic' ? 'default' : 'secondary'}>
                     {getApplicationTypeBadge(application.applicationType)}
                   </Badge>

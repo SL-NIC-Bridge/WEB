@@ -436,7 +436,7 @@ const handleStatusUpdate = async (status: string, comment?: string) => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Status</Label>
+                    <Label className="text-sm font-medium text-gray-500 mr-4">Status</Label>
                     <Badge className={`${getStatusColor(selectedRegistration.currentStatus)} mt-1 border`}>
                       {getStatusIcon(selectedRegistration.currentStatus)}
                       <span className="ml-1">{getStatusLabel(selectedRegistration.currentStatus)}</span>
