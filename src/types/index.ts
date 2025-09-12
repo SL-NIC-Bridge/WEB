@@ -114,6 +114,12 @@ export interface Application {
     fileName: string;
     fileUrl: string;
     createdAt: Date;
+    uploadedByUser?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
   }[];
 }
 
