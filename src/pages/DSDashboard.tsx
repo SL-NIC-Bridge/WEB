@@ -357,8 +357,9 @@ const DSDashboard: React.FC = () => {
 
             {/* Overview Tab */}
              <TabsContent value="overview" className="space-y-4">
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Applications by Division */}                 <Card>
+               <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+                {/* Applications by Division */}               
+                  {/* <Card>
                   <CardHeader>
                     <CardTitle>Applications by Division</CardTitle>
                     <CardDescription>Applications grouped by administrative division</CardDescription>
@@ -383,7 +384,7 @@ const DSDashboard: React.FC = () => {
                       )}
                     </div>
                   </CardContent>
-                </Card>
+                </Card> */}
 
                 {/* Division Distribution */}
                 <Card>
@@ -392,11 +393,11 @@ const DSDashboard: React.FC = () => {
                     <CardDescription>Applications by administrative division</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
+                    <div className="gap-6 grid grid-cols-2">
                       {divisions.map((division) => {
                         // const count = filteredApplications.filter(app => user.division?.id || '').length;
                         // const percentage = filteredApplications.length > 0 ? (count / filteredApplications.length) * 100 : 0;
-                        const count = filteredApplications.filter(app => app.user.division?.code === division.id).length;
+                        const count = filteredApplications.filter(app => app.user.division?.code === division.code).length;
                         const percentage = filteredApplications.length > 0 
                           ? (count / filteredApplications.length) * 100 
                           : 0;
