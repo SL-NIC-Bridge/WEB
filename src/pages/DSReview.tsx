@@ -1,1237 +1,3 @@
-// import React, { useState, useMemo } from 'react';
-// import { useParams, useNavigate } from 'react-router-dom';
-// import { useAuth } from '@/contexts/AuthContext';
-// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-// import { Button } from '@/components/ui/button';
-// import { Badge } from '@/components/ui/badge';
-// import { Separator } from '@/components/ui/separator';
-// import { Alert, AlertDescription } from '@/components/ui/alert';
-// import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-// import { Textarea } from '@/components/ui/textarea';
-// import { Label } from '@/components/ui/label';
-// import StatusBadge from '@/components/shared/StatusBadge';
-// import LoadingSpinner from '@/components/shared/LoadingSpinner';
-// import { mockApplications, generateMockApplications } from '@/services/mockData';
-// import { Application } from '@/types';
-// import { 
-//   ArrowLeft, 
-//   Send, 
-//   FileText, 
-//   User, 
-//   Phone, 
-//   MapPin,
-//   Calendar,
-//   CheckCircle,
-//   Download,
-//   Eye,
-//   XCircle,
-//   Clock,
-//   PenTool
-// } from 'lucide-react';
-// import { format } from 'date-fns';
-// import { toast } from 'sonner';
-
-// const DSReview: React.FC = () => {
-//   const { applicationId } = useParams<{ applicationId: string }>();
-//   const navigate = useNavigate();
-//   const { state } = useAuth();
-//   const [isProcessing, setIsProcessing] = useState(false);
-//   const [showRejectDialog, setShowRejectDialog] = useState(false);
-//   const [showHoldDialog, setShowHoldDialog] = useState(false);
-//   const [rejectReason, setRejectReason] = useState('');
-//   const [holdReason, setHoldReason] = useState('');
-
-//   // Mock GN signature (in real app, this would come from the GN registration data)
-//   const mockGnSignature = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='; // placeholder
-
-//   // Find the application
-//   const application = useMemo(() => {
-//     const allApplications = [...mockApplications, ...generateMockApplications(25)];
-//     return allApplications.find(app => app.id === applicationId);
-//   }, [applicationId]);
-
-//   const handleSendToDRP = async () => {
-//     if (!application) return;
-    
-//     setIsProcessing(true);
-//     try {
-//       // In a real app, this would make an API call
-//       await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
-      
-//       toast.success('Application successfully sent to DRP for final processing');
-//       navigate('/ds');
-//     } catch (error) {
-//       toast.error('Failed to send application to DRP');
-//     } finally {
-//       setIsProcessing(false);
-//     }
-//   };
-
-//   const handleReject = async () => {
-//     if (!application || !rejectReason.trim()) {
-//       toast.error('Please provide a reason for rejection');
-//       return;
-//     }
-    
-//     setIsProcessing(true);
-//     try {
-//       await new Promise(resolve => setTimeout(resolve, 1500));
-//       toast.success(`Application has been rejected: ${rejectReason}`);
-//       setShowRejectDialog(false);
-//       navigate('/ds');
-//     } catch (error) {
-//       toast.error('Failed to reject application');
-//     } finally {
-//       setIsProcessing(false);
-//     }
-//   };
-
-//   const handleHold = async () => {
-//     if (!application || !holdReason.trim()) {
-//       toast.error('Please provide a reason for holding');
-//       return;
-//     }
-    
-//     setIsProcessing(true);
-//     try {
-//       await new Promise(resolve => setTimeout(resolve, 1500));
-//       toast.success(`Application has been put on hold: ${holdReason}`);
-//       setShowHoldDialog(false);
-//       navigate('/ds');
-//     } catch (error) {
-//       toast.error('Failed to hold application');
-//     } finally {
-//       setIsProcessing(false);
-//     }
-//   };
-
-//   const handleBack = () => {
-//     navigate('/ds');
-//   };
-
-//   if (!application) {
-//     return (
-//       <div className="container mx-auto p-6">
-//         <Card>
-//           <CardContent className="flex flex-col items-center justify-center py-12">
-//             <AlertDescription className="text-center">
-//               Application not found or you don't have permission to view it.
-//             </AlertDescription>
-//             <Button 
-//               variant="outline" 
-//               onClick={handleBack}
-//               className="mt-4"
-//             >
-//               <ArrowLeft className="mr-2 h-4 w-4" />
-//               Back to Dashboard
-//             </Button>
-//           </CardContent>
-//         </Card>
-//       </div>
-//     );
-//   }
-
-//   if (application.status !== 'confirmed_by_gn') {
-//     return (
-//       <div className="container mx-auto p-6">
-//         <Card>
-//           <CardContent className="flex flex-col items-center justify-center py-12">
-//             <Alert>
-//               <AlertDescription className="text-center">
-//                 This application is not ready for DS review. Current status: {application.status}
-//               </AlertDescription>
-//             </Alert>
-//             <Button 
-//               variant="outline" 
-//               onClick={handleBack}
-//               className="mt-4"
-//             >
-//               <ArrowLeft className="mr-2 h-4 w-4" />
-//               Back to Dashboard
-//             </Button>
-//           </CardContent>
-//         </Card>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="container mx-auto p-6 space-y-6 animate-fade-in">
-//       {/* Header */}
-//       <div className="flex items-center justify-between">
-//         <div className="flex items-center space-x-4">
-//           <Button variant="outline" onClick={handleBack}>
-//             <ArrowLeft className="mr-2 h-4 w-4" />
-//             Back to Dashboard
-//           </Button>
-//           <div>
-//             <h1 className="text-2xl font-bold">Application Review</h1>
-//             <p className="text-muted-foreground">
-//               DS Review for Application #{application.id.split('-').pop()?.toUpperCase()}
-//             </p>
-//           </div>
-//         </div>
-//         <StatusBadge status={application.status} />
-//       </div>
-
-//       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-//         {/* Main Application Details */}
-//         <div className="lg:col-span-2 space-y-6">
-//           {/* Applicant Information */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle className="flex items-center space-x-2">
-//                 <User className="h-5 w-5" />
-//                 <span>Applicant Information</span>
-//               </CardTitle>
-//             </CardHeader>
-//             <CardContent className="space-y-4">
-//               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Full Name</Label>
-//                   <p className="font-medium">{application.applicantName}</p>
-//                 </div>
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Application Type</Label>
-//                   <Badge variant={application.applicationType === 'new_nic' ? 'default' : 'secondary'}>
-//                     {application.applicationType === 'new_nic' ? 'New NIC Application' : 'Verification'}
-//                   </Badge>
-//                 </div>
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Phone Number</Label>
-//                   <p className="flex items-center space-x-2">
-//                     <Phone className="h-4 w-4 text-muted-foreground" />
-//                     <span>{application.applicantPhone}</span>
-//                   </p>
-//                 </div>
-//                 {application.applicantNic && (
-//                   <div>
-//                     <Label className="text-sm font-medium text-muted-foreground">NIC Number</Label>
-//                     <p className="font-mono">{application.applicantNic}</p>
-//                   </div>
-//                 )}
-//               </div>
-              
-//               {application.applicationType === 'new_nic' && (
-//                 <Alert>
-//                   <AlertDescription>
-//                     <strong>Note:</strong> This is a new NIC application. The applicant does not have an existing NIC number.
-//                   </AlertDescription>
-//                 </Alert>
-//               )}
-//             </CardContent>
-//           </Card>
-
-//           {/* Area and Assignment Information */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle className="flex items-center space-x-2">
-//                 <MapPin className="h-5 w-5" />
-//                 <span>Administrative Details</span>
-//               </CardTitle>
-//             </CardHeader>
-//             <CardContent className="space-y-4">
-//               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Administrative Area</Label>
-//                   <p className="font-medium">{application.gnDivisionName}</p>
-//                 </div>
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Assigned Grama Niladhari</Label>
-//                   <p className="font-medium">{application.assignedGnName}</p>
-//                 </div>
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Application Submitted</Label>
-//                   <p className="flex items-center space-x-2">
-//                     <Calendar className="h-4 w-4 text-muted-foreground" />
-//                     <span>{format(new Date(application.submittedAt), 'MMM d, yyyy h:mm a')}</span>
-//                   </p>
-//                 </div>
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">GN Confirmed</Label>
-//                   <p className="flex items-center space-x-2">
-//                     <CheckCircle className="h-4 w-4 text-green-600" />
-//                     <span>{format(new Date(application.updatedAt), 'MMM d, yyyy h:mm a')}</span>
-//                   </p>
-//                 </div>
-//               </div>
-//             </CardContent>
-//           </Card>
-
-//           {/* Documents */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle className="flex items-center space-x-2">
-//                 <FileText className="h-5 w-5" />
-//                 <span>Submitted Documents</span>
-//               </CardTitle>
-//               <CardDescription>
-//                 Documents submitted by the applicant and verified by the GN
-//               </CardDescription>
-//             </CardHeader>
-//             <CardContent>
-//               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//                 <div className="border rounded-lg p-4">
-//                   <div className="flex items-center justify-between mb-2">
-//                     <div className="flex items-center space-x-2">
-//                       <FileText className="h-4 w-4 text-blue-600" />
-//                       <span className="font-medium">Birth Certificate</span>
-//                     </div>
-//                     <Badge variant="outline">PDF</Badge>
-//                   </div>
-//                   <p className="text-sm text-muted-foreground mb-3">
-//                     Original birth certificate document
-//                   </p>
-//                   <div className="flex space-x-2">
-//                     <Button size="sm" variant="outline" className="flex-1">
-//                       <Eye className="mr-2 h-4 w-4" />
-//                       View
-//                     </Button>
-//                     <Button size="sm" variant="outline" className="flex-1">
-//                       <Download className="mr-2 h-4 w-4" />
-//                       Download
-//                     </Button>
-//                   </div>
-//                 </div>
-
-//                 <div className="border rounded-lg p-4">
-//                   <div className="flex items-center justify-between mb-2">
-//                     <div className="flex items-center space-x-2">
-//                       <FileText className="h-4 w-4 text-green-600" />
-//                       <span className="font-medium">Photo ID</span>
-//                     </div>
-//                     <Badge variant="outline">JPG</Badge>
-//                   </div>
-//                   <p className="text-sm text-muted-foreground mb-3">
-//                     Applicant's photograph for verification
-//                   </p>
-//                   <div className="flex space-x-2">
-//                     <Button size="sm" variant="outline" className="flex-1">
-//                       <Eye className="mr-2 h-4 w-4" />
-//                       View
-//                     </Button>
-//                     <Button size="sm" variant="outline" className="flex-1">
-//                       <Download className="mr-2 h-4 w-4" />
-//                       Download
-//                     </Button>
-//                   </div>
-//                 </div>
-//               </div>
-//             </CardContent>
-//           </Card>
-//         </div>
-
-//         {/* Action Panel */}
-//         <div className="space-y-6">
-//           {/* GN Signature Verification */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle className="flex items-center space-x-2">
-//                 <PenTool className="h-5 w-5" />
-//                 <span>GN Signature Verification</span>
-//               </CardTitle>
-//               <CardDescription>
-//                 Compare the GN's signature on the application with their registered signature
-//               </CardDescription>
-//             </CardHeader>
-//             <CardContent className="space-y-4">
-//               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-//                     Registered GN Signature
-//                   </Label>
-//                   <div className="border rounded-lg p-4 bg-gray-50 min-h-[120px] flex items-center justify-center">
-//                     <div className="text-center">
-//                       <PenTool className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-//                       <p className="text-sm text-gray-500">GN Registered Signature</p>
-//                       <p className="text-xs text-gray-400 mt-1">
-//                         {application.assignedGnName}
-//                       </p>
-//                     </div>
-//                   </div>
-//                 </div>
-                
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-//                     Application Signature
-//                   </Label>
-//                   <div className="border rounded-lg p-4 bg-white min-h-[120px] flex items-center justify-center">
-//                     <div className="text-center">
-//                       <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-//                       <p className="text-sm text-green-700">Signature Applied</p>
-//                       <p className="text-xs text-gray-500 mt-1">
-//                         {format(new Date(application.updatedAt), 'MMM d, yyyy h:mm a')}
-//                       </p>
-//                     </div>
-//                   </div>
-//                 </div>
-//               </div>
-              
-//               <Alert>
-//                 <CheckCircle className="h-4 w-4" />
-//                 <AlertDescription>
-//                   <strong>Signature Status:</strong> The signatures match and the GN verification is authentic.
-//                   You can proceed with sending this application to DRP.
-//                 </AlertDescription>
-//               </Alert>
-//             </CardContent>
-//           </Card>
-
-//           {/* GN Verification Status */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle>GN Verification Status</CardTitle>
-//             </CardHeader>
-//             <CardContent className="space-y-4">
-//               <div className="flex items-center space-x-3">
-//                 <CheckCircle className="h-6 w-6 text-green-600" />
-//                 <div>
-//                   <p className="font-medium">Verified and Confirmed</p>
-//                   <p className="text-sm text-muted-foreground">
-//                     By {application.assignedGnName}
-//                   </p>
-//                 </div>
-//               </div>
-//               <Separator />
-//               <div className="space-y-2">
-//                 <Label className="text-sm font-medium">Verification Date</Label>
-//                 <p className="text-sm">{format(new Date(application.updatedAt), 'PPP p')}</p>
-//               </div>
-//               {application.signedPdfUrl && (
-//                 <>
-//                   <Separator />
-//                   <div className="space-y-2">
-//                     <Label className="text-sm font-medium">Digital Signature</Label>
-//                     <div className="flex items-center space-x-2">
-//                       <CheckCircle className="h-4 w-4 text-green-600" />
-//                       <span className="text-sm">Document Signed</span>
-//                     </div>
-//                     <Button size="sm" variant="outline" className="w-full">
-//                       <Download className="mr-2 h-4 w-4" />
-//                       Download Signed Document
-//                     </Button>
-//                   </div>
-//                 </>
-//               )}
-//             </CardContent>
-//           </Card>
-
-//           {/* Action Buttons */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle>DS Actions</CardTitle>
-//               <CardDescription>
-//                 Review the application and send to DRP for final processing
-//               </CardDescription>
-//             </CardHeader>
-//             <CardContent className="space-y-4">
-//               <Alert>
-//                 <AlertDescription>
-//                   This application has been verified by the GN and is ready for DS approval.
-//                   Once approved, it will be sent to the District Registrar of Properties (DRP) for final processing.
-//                 </AlertDescription>
-//               </Alert>
-              
-//               <div className="space-y-3">
-//                 <Button 
-//                   className="w-full bg-primary hover:bg-primary-hover"
-//                   onClick={handleSendToDRP}
-//                   disabled={isProcessing}
-//                 >
-//                   {isProcessing ? (
-//                     <>
-//                       <LoadingSpinner size="sm" className="mr-2" />
-//                       Processing...
-//                     </>
-//                   ) : (
-//                     <>
-//                       <Send className="mr-2 h-4 w-4" />
-//                       Send to DRP
-//                     </>
-//                   )}
-//                 </Button>
-                
-//                 <div className="grid grid-cols-2 gap-2">
-//                   <Button 
-//                     variant="outline" 
-//                     className="w-full border-yellow-200 text-yellow-700 hover:bg-yellow-50"
-//                     disabled={isProcessing}
-//                     onClick={() => setShowHoldDialog(true)}
-//                   >
-//                     <Clock className="mr-2 h-4 w-4" />
-//                     Hold
-//                   </Button>
-                  
-//                   <Button 
-//                     variant="outline" 
-//                     className="w-full border-red-200 text-red-700 hover:bg-red-50"
-//                     disabled={isProcessing}
-//                     onClick={() => setShowRejectDialog(true)}
-//                   >
-//                     <XCircle className="mr-2 h-4 w-4" />
-//                     Reject
-//                   </Button>
-//                 </div>
-//               </div>
-//             </CardContent>
-//           </Card>
-
-//           {/* Application Timeline */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle>Application Timeline</CardTitle>
-//             </CardHeader>
-//             <CardContent>
-//               <div className="space-y-4">
-//                 <div className="flex items-start space-x-3">
-//                   <div className="w-2 h-2 rounded-full bg-green-600 mt-2"></div>
-//                   <div>
-//                     <p className="font-medium text-sm">GN Confirmed</p>
-//                     <p className="text-xs text-muted-foreground">
-//                       {format(new Date(application.updatedAt), 'MMM d, yyyy h:mm a')}
-//                     </p>
-//                   </div>
-//                 </div>
-//                 <div className="flex items-start space-x-3">
-//                   <div className="w-2 h-2 rounded-full bg-blue-600 mt-2"></div>
-//                   <div>
-//                     <p className="font-medium text-sm">Under GN Review</p>
-//                     <p className="text-xs text-muted-foreground">
-//                       {format(new Date(application.submittedAt), 'MMM d, yyyy h:mm a')}
-//                     </p>
-//                   </div>
-//                 </div>
-//                 <div className="flex items-start space-x-3">
-//                   <div className="w-2 h-2 rounded-full bg-gray-400 mt-2"></div>
-//                   <div>
-//                     <p className="font-medium text-sm">Application Submitted</p>
-//                     <p className="text-xs text-muted-foreground">
-//                       {format(new Date(application.submittedAt), 'MMM d, yyyy h:mm a')}
-//                     </p>
-//                   </div>
-//                 </div>
-//               </div>
-//             </CardContent>
-//           </Card>
-//         </div>
-//       </div>
-
-//       {/* Reject Dialog */}
-//       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-//         <DialogContent>
-//           <DialogHeader>
-//             <DialogTitle>Reject Application</DialogTitle>
-//             <DialogDescription>
-//               Please provide a reason for rejecting this application. The applicant and GN will be notified.
-//             </DialogDescription>
-//           </DialogHeader>
-//           <div className="space-y-4">
-//             <div>
-//               <label htmlFor="rejectReason" className="text-sm font-medium">Reason for Rejection *</label>
-//               <Textarea
-//                 id="rejectReason"
-//                 value={rejectReason}
-//                 onChange={(e) => setRejectReason(e.target.value)}
-//                 placeholder="Explain why this application is being rejected..."
-//                 className="mt-1"
-//                 rows={4}
-//               />
-//             </div>
-//             <div className="flex space-x-3 justify-end">
-//               <Button variant="outline" onClick={() => setShowRejectDialog(false)} disabled={isProcessing}>
-//                 Cancel
-//               </Button>
-//               <Button variant="destructive" onClick={handleReject} disabled={isProcessing || !rejectReason.trim()}>
-//                 {isProcessing ? (
-//                   <>
-//                     <LoadingSpinner size="sm" className="mr-2" />
-//                     Rejecting...
-//                   </>
-//                 ) : (
-//                   <>
-//                     <XCircle className="mr-2 h-4 w-4" />
-//                     Reject Application
-//                   </>
-//                 )}
-//               </Button>
-//             </div>
-//           </div>
-//         </DialogContent>
-//       </Dialog>
-
-//       {/* Hold Dialog */}
-//       <Dialog open={showHoldDialog} onOpenChange={setShowHoldDialog}>
-//         <DialogContent>
-//           <DialogHeader>
-//             <DialogTitle>Hold Application</DialogTitle>
-//             <DialogDescription>
-//               Please provide a reason for putting this application on hold. The applicant and GN will be notified.
-//             </DialogDescription>
-//           </DialogHeader>
-//           <div className="space-y-4">
-//             <div>
-//               <label htmlFor="holdReason" className="text-sm font-medium">Reason for Hold *</label>
-//               <Textarea
-//                 id="holdReason"
-//                 value={holdReason}
-//                 onChange={(e) => setHoldReason(e.target.value)}
-//                 placeholder="Explain why this application is being put on hold..."
-//                 className="mt-1"
-//                 rows={4}
-//               />
-//             </div>
-//             <div className="flex space-x-3 justify-end">
-//               <Button variant="outline" onClick={() => setShowHoldDialog(false)} disabled={isProcessing}>
-//                 Cancel
-//               </Button>
-//               <Button onClick={handleHold} disabled={isProcessing || !holdReason.trim()}>
-//                 {isProcessing ? (
-//                   <>
-//                     <LoadingSpinner size="sm" className="mr-2" />
-//                     Processing...
-//                   </>
-//                 ) : (
-//                   <>
-//                     <Clock className="mr-2 h-4 w-4" />
-//                     Hold Application
-//                   </>
-//                 )}
-//               </Button>
-//             </div>
-//           </div>
-//         </DialogContent>
-//       </Dialog>
-//     </div>
-//   );
-// };
-
-// export default DSReview;
-
-
-
-
-
-
-
-// import React, { useState, useEffect } from 'react';
-// import { useParams, useNavigate } from 'react-router-dom';
-// import { useAuth } from '@/contexts/AuthContext';
-// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-// import { Button } from '@/components/ui/button';
-// import { Badge } from '@/components/ui/badge';
-// import { Separator } from '@/components/ui/separator';
-// import { Alert, AlertDescription } from '@/components/ui/alert';
-// import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-// import { Textarea } from '@/components/ui/textarea';
-// import { Label } from '@/components/ui/label';
-// import StatusBadge from '@/components/shared/StatusBadge';
-// import LoadingSpinner from '@/components/shared/LoadingSpinner';
-// import { applicationApiService, documentApiService } from '@/services/apiServices';
-// import { Application, ApplicationStatus, Document } from '@/types';
-// import { 
-//   ArrowLeft, 
-//   Send, 
-//   FileText, 
-//   User,
-//   Phone, 
-//   MapPin,
-//   Calendar,
-//   CheckCircle,
-//   Download,
-//   Eye,
-//   XCircle,
-//   Clock,
-//   PenTool,
-//   AlertCircle,
-//   Building
-// } from 'lucide-react';
-// import { format } from 'date-fns';
-// import { toast } from 'sonner';
-
-// const DSReview: React.FC = () => {
-//   const { applicationId } = useParams<{ applicationId: string }>();
-//   const navigate = useNavigate();
-//   const { state } = useAuth();
-//   const [isProcessing, setIsProcessing] = useState(false);
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [error, setError] = useState<string | null>(null);
-//   const [showRejectDialog, setShowRejectDialog] = useState(false);
-//   const [showHoldDialog, setShowHoldDialog] = useState(false);
-//   const [rejectReason, setRejectReason] = useState('');
-//   const [holdReason, setHoldReason] = useState('');
-//   const [application, setApplication] = useState<Application | null>(null);
-//   const [documents, setDocuments] = useState<Document[]>([]);
-  
-
-
-//   // Load application and documents on mount
-//   useEffect(() => {
-//     const loadApplication = async () => {
-//       if (!applicationId) return;
-
-//       try {
-//         setIsLoading(true);
-//         setError(null);
-
-//         const [appResponse, docsResponse] = await Promise.all([
-//           applicationApiService.getApplicationById(applicationId),
-//           documentApiService.getDocumentsForApplication(applicationId)
-//         ]);
-
-//         setApplication(appResponse);
-//         setDocuments(docsResponse);
-
-//         // Verify application is in correct status for DS review
-//         if (appResponse.currentStatus !== ApplicationStatus.APPROVED_BY_GN) {
-//           setError(`This application is not ready for DS review. Current status: ${appResponse.currentStatus}`);
-//         }
-//       } catch (error) {
-//         console.error('Error loading application:', error);
-//         setError('Application not found or you don\'t have permission to view it.');
-//       } finally {
-//         setIsLoading(false);
-//       }
-//     };
-
-//     loadApplication();
-//   }, [applicationId]);
-
-//   const handleSendToDRP = async () => {
-//     if (!application) return;
-    
-//     setIsProcessing(true);
-//     try {
-//       await applicationApiService.updateApplicationStatus(application.id, {
-//         status: ApplicationStatus.SENT_TO_DRP,
-//         comment: 'Application approved by DS and sent to DRP for final processing'
-//       });
-      
-//       toast.success('Application successfully sent to DRP for final processing');
-//       navigate('/ds');
-//     } catch (error) {
-//       console.error('Error sending application to DRP:', error);
-//       toast.error('Failed to send application to DRP');
-//     } finally {
-//       setIsProcessing(false);
-//     }
-//   };
-
-//   const handleReject = async () => {
-//     if (!application || !rejectReason.trim()) {
-//       toast.error('Please provide a reason for rejection');
-//       return;
-//     }
-    
-//     setIsProcessing(true);
-//     try {
-//       await applicationApiService.updateApplicationStatus(application.id, {
-//         status: ApplicationStatus.REJECTED_BY_GN, // Using existing status
-//         comment: `Application rejected by DS: ${rejectReason}`
-//       });
-      
-//       toast.success('Application has been rejected');
-//       setShowRejectDialog(false);
-//       navigate('/ds');
-//     } catch (error) {
-//       console.error('Error rejecting application:', error);
-//       toast.error('Failed to reject application');
-//     } finally {
-//       setIsProcessing(false);
-//     }
-//   };
-
-//   const handleHold = async () => {
-//     if (!application || !holdReason.trim()) {
-//       toast.error('Please provide a reason for holding');
-//       return;
-//     }
-    
-//     setIsProcessing(true);
-//     try {
-//       await applicationApiService.updateApplicationStatus(application.id, {
-//         status: ApplicationStatus.ON_HOLD_BY_DS,
-//         comment: `Application put on hold by DS: ${holdReason}`
-//       });
-      
-//       toast.success('Application has been put on hold');
-//       setShowHoldDialog(false);
-//       navigate('/ds');
-//     } catch (error) {
-//       console.error('Error holding application:', error);
-//       toast.error('Failed to hold application');
-//     } finally {
-//       setIsProcessing(false);
-//     }
-//   };
-
-//   const handleBack = () => {
-//     navigate('/ds');
-//   };
-
-//   const getApplicationTypeBadge = (type: string) => {
-//     const typeMap = {
-//       'new_nic': 'New NIC',
-//       'replace_nic': 'Replace NIC',
-//       'correct_nic': 'Correct NIC'
-//     };
-//     return typeMap[type as keyof typeof typeMap] || type;
-//   };
-
-//   // const getDocumentTypeIcon = (type: string) => {
-//   //   switch (type.toLowerCase()) {
-//   //     case 'birth_certificate':
-//   //       return <FileText className="h-4 w-4 text-blue-600" />;
-//   //     case 'photo_id':
-//   //       return <User className="h-4 w-4 text-green-600" />;
-//   //     default:
-//   //       return <FileText className="h-4 w-4 text-gray-600" />;
-//   //   }
-//   // };
-
-//   const getDocumentTypeIcon = (type?: string) => {
-//   if (!type) {
-//     return <FileText className="h-4 w-4 text-gray-400" />; // fallback for missing type
-//   }
-
-//   switch (type.toLowerCase()) {
-//     case 'birth_certificate':
-//       return <FileText className="h-4 w-4 text-blue-600" />;
-//     case 'photo_id':
-//       return <User className="h-4 w-4 text-green-600" />;
-//     default:
-//       return <FileText className="h-4 w-4 text-gray-600" />;
-//   }
-// };
-
-
-//   const getDocumentTypeName = (type: string) => {
-//     const typeMap = {
-//       'birth_certificate': 'Birth Certificate',
-//       'photo_id': 'Photo ID',
-//       'nic_copy': 'NIC Copy',
-//       'proof_of_address': 'Proof of Address'
-//     };
-//     return typeMap[type as keyof typeof typeMap] || type;
-//   };
-
-//   if (isLoading) {
-//     return (
-//       <div className="container mx-auto p-6 flex justify-center items-center min-h-[50vh]">
-//         <LoadingSpinner size="lg" />
-//       </div>
-//     );
-//   }
-
-//   if (error || !application) {
-//     return (
-//       <div className="container mx-auto p-6">
-//         <Card>
-//           <CardContent className="flex flex-col items-center justify-center py-12">
-//             <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-//             <Alert>
-//               <AlertDescription className="text-center">
-//                 {error || 'Application not found or you don\'t have permission to view it.'}
-//               </AlertDescription>
-//             </Alert>
-//             <Button 
-//               variant="outline" 
-//               onClick={handleBack}
-//               className="mt-4"
-//             >
-//               <ArrowLeft className="mr-2 h-4 w-4" />
-//               Back to Dashboard
-//             </Button>
-//           </CardContent>
-//         </Card>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="container mx-auto p-6 space-y-6 animate-fade-in">
-//       {/* Header */}
-//       <div className="flex items-center justify-between">
-//         <div className="flex items-center space-x-4">
-//           <Button variant="outline" onClick={handleBack}>
-//             <ArrowLeft className="mr-2 h-4 w-4" />
-//             Back to Dashboard
-//           </Button>
-//           <div>
-//             <h1 className="text-2xl font-bold">Application Review</h1>
-//             <p className="text-muted-foreground">
-//               DS Review for Application #{application.id.slice(-8).toUpperCase()}
-//             </p>
-//           </div>
-//         </div>
-//         <StatusBadge status={application.currentStatus} />
-//       </div>
-
-//       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-//         {/* Main Application Details */}
-//         <div className="lg:col-span-2 space-y-6">
-//           {/* Applicant Information */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle className="flex items-center space-x-2">
-//                 <User className="h-5 w-5" />
-//                 <span>Applicant Information</span>
-//               </CardTitle>
-//             </CardHeader>
-//             <CardContent className="space-y-4">
-//               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Full Name</Label>
-//                   <p className="font-medium">{application.user.firstName} {application.user.lastName}</p>
-//                 </div>
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Application Type</Label>
-//                   <Badge variant={application.applicationType === 'new_nic' ? 'default' : 'secondary'}>
-//                     {getApplicationTypeBadge(application.applicationType)}
-//                   </Badge>
-//                 </div>
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Phone Number</Label>
-//                   <p className="flex items-center space-x-2">
-//                     <Phone className="h-4 w-4 text-muted-foreground" />
-//                     <span>{application.user.phone}</span>
-//                   </p>
-//                 </div>
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Email</Label>
-//                   <p className="text-sm">{application.user.email}</p>
-//                 </div>
-//               </div>
-              
-//               {application.applicationType === 'new_nic' && (
-//                 <Alert>
-//                   <AlertDescription>
-//                     <strong>Note:</strong> This is a new NIC application. The applicant does not have an existing NIC number.
-//                   </AlertDescription>
-//                 </Alert>
-//               )}
-//             </CardContent>
-//           </Card>
-
-//           {/* Application Data */}
-//           {application.applicationData && (
-//             <Card>
-//               <CardHeader>
-//                 <CardTitle className="flex items-center space-x-2">
-//                   <FileText className="h-5 w-5" />
-//                   <span>Application Details</span>
-//                 </CardTitle>
-//               </CardHeader>
-//               <CardContent className="space-y-4">
-//                 <div className="bg-gray-50 p-4 rounded-lg">
-//                   <pre className="text-sm whitespace-pre-wrap overflow-auto">
-//                     {JSON.stringify(application.applicationData, null, 2)}
-//                   </pre>
-//                 </div>
-//               </CardContent>
-//             </Card>
-//           )}
-
-//           {/* Administrative Information */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle className="flex items-center space-x-2">
-//                 <Building className="h-5 w-5" />
-//                 <span>Administrative Details</span>
-//               </CardTitle>
-//             </CardHeader>
-//             <CardContent className="space-y-4">
-//               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//                 {/* <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">User Division</Label>
-//                   <p className="font-medium">{application.user.division?.name || 'Not assigned'}</p>
-//                 </div>
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Division Code</Label>
-//                   <p className="font-medium">{application.user.division?.code || 'N/A'}</p>
-//                 </div> */}
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Application Submitted</Label>
-//                   <p className="flex items-center space-x-2">
-//                     <Calendar className="h-4 w-4 text-muted-foreground" />
-//                     <span>{format(new Date(application.createdAt), 'MMM d, yyyy h:mm a')}</span>
-//                   </p>
-//                 </div>
-//                 <div>
-//                   <Label className="text-sm font-medium text-muted-foreground">Last Updated</Label>
-//                   <p className="flex items-center space-x-2">
-//                     <CheckCircle className="h-4 w-4 text-green-600" />
-//                     <span>{format(new Date(application.updatedAt), 'MMM d, yyyy h:mm a')}</span>
-//                   </p>
-//                 </div>
-//               </div>
-//             </CardContent>
-//           </Card>
-
-//           {/* Documents */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle className="flex items-center space-x-2">
-//                 <FileText className="h-5 w-5" />
-//                 <span>Submitted Documents</span>
-//               </CardTitle>
-//               <CardDescription>
-//                 Documents submitted by the applicant and verified by the GN
-//               </CardDescription>
-//             </CardHeader>
-//             <CardContent>
-//               {documents.length === 0 ? (
-//                 <div className="text-center py-8">
-//                   <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-//                   <p className="text-muted-foreground">No documents found for this application</p>
-//                 </div>
-//               ) : (
-//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//                   {documents.map((doc) => (
-//                     <div key={doc.id} className="border rounded-lg p-4">
-//                       <div className="flex items-center justify-between mb-2">
-//                         <div className="flex items-center space-x-2">
-//                           {getDocumentTypeIcon(doc.fileType)}
-//                           <span className="font-medium">{getDocumentTypeName(doc.fileType)}</span>
-//                         </div>
-//                         {/* <Badge variant="outline">{doc.fileType.toUpperCase()}</Badge> */}
-//                         <Badge variant="outline">
-//                           {doc.fileType ? doc.fileType.toUpperCase() : "UNKNOWN"}
-//                         </Badge>
-
-//                       </div>
-//                       <p className="text-sm text-muted-foreground mb-3">
-//                         Uploaded: {format(new Date(doc.uploadedAt), 'MMM d, yyyy h:mm a')}
-//                       </p>
-//                       <div className="flex space-x-2">
-//                         <Button size="sm" variant="outline" className="flex-1">
-//                           <Eye className="mr-2 h-4 w-4" />
-//                           View
-//                         </Button>
-//                         <Button size="sm" variant="outline" className="flex-1">
-//                           <Download className="mr-2 h-4 w-4" />
-//                           Download
-//                         </Button>
-//                       </div>
-//                     </div>
-//                   ))}
-//                 </div>
-//               )}
-//             </CardContent>
-//           </Card>
-//         </div>
-
-//         {/* Action Panel */}
-//         <div className="space-y-6">
-//           {/* Status Information */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle>Current Status</CardTitle>
-//             </CardHeader>
-//             <CardContent className="space-y-4">
-//               <div className="flex items-center space-x-3">
-//                 <CheckCircle className="h-6 w-6 text-green-600" />
-//                 <div>
-//                   <p className="font-medium">Approved by GN</p>
-//                   <p className="text-sm text-muted-foreground">
-//                     Ready for DS review
-//                   </p>
-//                 </div>
-//               </div>
-//               <Separator />
-//               <div className="space-y-2">
-//                 <Label className="text-sm font-medium">Status Updated</Label>
-//                 <p className="text-sm">{format(new Date(application.updatedAt), 'PPP p')}</p>
-//               </div>
-//             </CardContent>
-//           </Card>
-
-//           {/* DS Actions */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle>DS Actions</CardTitle>
-//               <CardDescription>
-//                 Review the application and send to DRP for final processing
-//               </CardDescription>
-//             </CardHeader>
-//             <CardContent className="space-y-4">
-//               <Alert>
-//                 <AlertDescription>
-//                   This application has been verified by the GN and is ready for DS approval.
-//                   Once approved, it will be sent to the District Registrar of Properties (DRP) for final processing.
-//                 </AlertDescription>
-//               </Alert>
-              
-//               <div className="space-y-3">
-//                 <Button 
-//                   className="w-full bg-primary hover:bg-primary-hover"
-//                   onClick={handleSendToDRP}
-//                   disabled={isProcessing}
-//                 >
-//                   {isProcessing ? (
-//                     <>
-//                       <LoadingSpinner size="sm" className="mr-2" />
-//                       Processing...
-//                     </>
-//                   ) : (
-//                     <>
-//                       <Send className="mr-2 h-4 w-4" />
-//                       Send to DRP
-//                     </>
-//                   )}
-//                 </Button>
-                
-//                 <div className="grid grid-cols-2 gap-2">
-//                   <Button 
-//                     variant="outline" 
-//                     className="w-full border-yellow-200 text-yellow-700 hover:bg-yellow-50"
-//                     disabled={isProcessing}
-//                     onClick={() => setShowHoldDialog(true)}
-//                   >
-//                     <Clock className="mr-2 h-4 w-4" />
-//                     Hold
-//                   </Button>
-                  
-//                   <Button 
-//                     variant="outline" 
-//                     className="w-full border-red-200 text-red-700 hover:bg-red-50"
-//                     disabled={isProcessing}
-//                     onClick={() => setShowRejectDialog(true)}
-//                   >
-//                     <XCircle className="mr-2 h-4 w-4" />
-//                     Reject
-//                   </Button>
-//                 </div>
-//               </div>
-//             </CardContent>
-//           </Card>
-
-//           {/* Application Timeline */}
-//           <Card>
-//             <CardHeader>
-//               <CardTitle>Application Timeline</CardTitle>
-//             </CardHeader>
-//             <CardContent>
-//               <div className="space-y-4">
-//                 <div className="flex items-start space-x-3">
-//                   <div className="w-2 h-2 rounded-full bg-green-600 mt-2"></div>
-//                   <div>
-//                     <p className="font-medium text-sm">GN Approved</p>
-//                     <p className="text-xs text-muted-foreground">
-//                       {format(new Date(application.updatedAt), 'MMM d, yyyy h:mm a')}
-//                     </p>
-//                   </div>
-//                 </div>
-//                 <div className="flex items-start space-x-3">
-//                   <div className="w-2 h-2 rounded-full bg-gray-400 mt-2"></div>
-//                   <div>
-//                     <p className="font-medium text-sm">Application Submitted</p>
-//                     <p className="text-xs text-muted-foreground">
-//                       {format(new Date(application.createdAt), 'MMM d, yyyy h:mm a')}
-//                     </p>
-//                   </div>
-//                 </div>
-//               </div>
-//             </CardContent>
-//           </Card>
-//         </div>
-//       </div>
-
-//       {/* Reject Dialog */}
-//       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-//         <DialogContent>
-//           <DialogHeader>
-//             <DialogTitle>Reject Application</DialogTitle>
-//             <DialogDescription>
-//               Please provide a reason for rejecting this application. The applicant and GN will be notified.
-//             </DialogDescription>
-//           </DialogHeader>
-//           <div className="space-y-4">
-//             <div>
-//               <label htmlFor="rejectReason" className="text-sm font-medium">Reason for Rejection *</label>
-//               <Textarea
-//                 id="rejectReason"
-//                 value={rejectReason}
-//                 onChange={(e) => setRejectReason(e.target.value)}
-//                 placeholder="Explain why this application is being rejected..."
-//                 className="mt-1"
-//                 rows={4}
-//               />
-//             </div>
-//             <div className="flex space-x-3 justify-end">
-//               <Button variant="outline" onClick={() => setShowRejectDialog(false)} disabled={isProcessing}>
-//                 Cancel
-//               </Button>
-//               <Button variant="destructive" onClick={handleReject} disabled={isProcessing || !rejectReason.trim()}>
-//                 {isProcessing ? (
-//                   <>
-//                     <LoadingSpinner size="sm" className="mr-2" />
-//                     Rejecting...
-//                   </>
-//                 ) : (
-//                   <>
-//                     <XCircle className="mr-2 h-4 w-4" />
-//                     Reject Application
-//                   </>
-//                 )}
-//               </Button>
-//             </div>
-//           </div>
-//         </DialogContent>
-//       </Dialog>
-
-//       {/* Hold Dialog */}
-//       <Dialog open={showHoldDialog} onOpenChange={setShowHoldDialog}>
-//         <DialogContent>
-//           <DialogHeader>
-//             <DialogTitle>Hold Application</DialogTitle>
-//             <DialogDescription>
-//               Please provide a reason for putting this application on hold. The applicant and GN will be notified.
-//             </DialogDescription>
-//           </DialogHeader>
-//           <div className="space-y-4">
-//             <div>
-//               <label htmlFor="holdReason" className="text-sm font-medium">Reason for Hold *</label>
-//               <Textarea
-//                 id="holdReason"
-//                 value={holdReason}
-//                 onChange={(e) => setHoldReason(e.target.value)}
-//                 placeholder="Explain why this application is being put on hold..."
-//                 className="mt-1"
-//                 rows={4}
-//               />
-//             </div>
-//             <div className="flex space-x-3 justify-end">
-//               <Button variant="outline" onClick={() => setShowHoldDialog(false)} disabled={isProcessing}>
-//                 Cancel
-//               </Button>
-//               <Button onClick={handleHold} disabled={isProcessing || !holdReason.trim()}>
-//                 {isProcessing ? (
-//                   <>
-//                     <LoadingSpinner size="sm" className="mr-2" />
-//                     Processing...
-//                   </>
-//                 ) : (
-//                   <>
-//                     <Clock className="mr-2 h-4 w-4" />
-//                     Hold Application
-//                   </>
-//                 )}
-//               </Button>
-//             </div>
-//           </div>
-//         </DialogContent>
-//       </Dialog>
-//     </div>
-//   );
-// };
-
-// export default DSReview;
-
-
-
-
-
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1293,6 +59,24 @@ interface Attachment {
   };
 }
 
+// Extended user interface to include GN signature
+interface GNUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  additionalData?: {
+    nic?: string;
+    signatureUrl?: string;
+    [key: string]: any;
+  };
+  division?: {
+    code: string;
+    name: string;
+  };
+}
+
 const DSReview: React.FC = () => {
   const { applicationId } = useParams<{ applicationId: string }>();
   const navigate = useNavigate();
@@ -1305,12 +89,10 @@ const DSReview: React.FC = () => {
   const [showHoldDialog, setShowHoldDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [holdReason, setHoldReason] = useState('');
-  const [application, setApplication] = useState<ApplicationWithAttachments | null>(null);
+  const [application, setApplication] = useState<Application | null>(null);
   const [documents, setDocuments] = useState<Attachment[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
- //const [documents, setDocuments] = useState<(Attachment | Document)[]>([]);
-
-
+  const [gnUser, setGnUser] = useState<GNUser | null>(null);
 
   // Load application, documents, and audit logs on mount
   useEffect(() => {
@@ -1324,6 +106,9 @@ const DSReview: React.FC = () => {
         const appResponse = await applicationApiService.getApplicationById(applicationId);
         console.log('Application loaded:', appResponse);
         setApplication(appResponse);
+
+        // Set GN user data
+        setGnUser(appResponse.user as GNUser);
 
         // Verify application is in correct status for DS review
         if (appResponse.currentStatus !== ApplicationStatus.APPROVED_BY_GN) {
@@ -1344,40 +129,52 @@ const DSReview: React.FC = () => {
     loadApplicationData();
   }, [applicationId]);
 
-const loadDocumentsAndLogs = async (appId: string) => {
-  let mounted = true;
-  setIsLoadingDocs(true);
+  const loadDocumentsAndLogs = async (appId: string) => {
+    let mounted = true;
+    setIsLoadingDocs(true);
 
-  try {
-    const [docsResponse, logsResponse] = await Promise.all([
-      documentApiService.getDocumentsForApplication(appId),
-      auditLogApiService.getAuditLogsForApplication(appId)
-    ]);
+    try {
+      const [docsResponse, logsResponse] = await Promise.all([
+        documentApiService.getDocumentsForApplication(appId),
+        auditLogApiService.getAuditLogsForApplication(appId)
+      ]);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    // You already have arrays here
-   // setDocuments(docsResponse || []);
-    setAuditLogs(logsResponse || []);
+      // Convert documents to attachment format if needed
+      const attachments: Attachment[] = Array.isArray(docsResponse) ? docsResponse.map((doc: any) => ({
+        id: doc.id,
+        attachmentType: doc.attachmentType || 'APPLICATION_ATTACHMENT',
+        fileName: doc.fileName || doc.originalFileUrl?.split('/').pop() || 'Unknown',
+        fileUrl: doc.fileUrl || doc.originalFileUrl || '',
+        fieldKey: doc.fieldKey || null,
+        applicationId: doc.applicationId || appId,
+        metadata: doc.metadata || doc.ocrExtractedJson || null,
+        createdAt: doc.createdAt || doc.uploadedAt || new Date().toISOString(),
+        uploadedByUser: doc.uploadedByUser || undefined
+      })) : [];
 
-  } catch (error) {
-    console.error('Failed to load documents/audit logs:', error);
-    if (mounted) {
-      // fallback
-      setDocuments((application as any)?.attachments || []);
-      setAuditLogs([]);
+      setDocuments(attachments);
+      setAuditLogs(logsResponse || []);
+
+    } catch (error) {
+      console.error('Failed to load documents/audit logs:', error);
+      if (mounted) {
+        // Fallback to application attachments if available
+        const fallbackDocs = (application as any)?.attachments || [];
+       // setDocuments(fallbackDocs);
+        setAuditLogs([]);
+      }
+    } finally {
+      if (mounted) {
+        setIsLoadingDocs(false);
+      }
     }
-  } finally {
-    if (mounted) {
-      setIsLoadingDocs(false);
-    }
-  }
 
-  return () => {
-    mounted = false;
+    return () => {
+      mounted = false;
+    };
   };
-};
-
 
   const handleSendToDRP = async () => {
     if (!application) return;
@@ -1531,6 +328,13 @@ const loadDocumentsAndLogs = async (appId: string) => {
     }
   };
 
+  // Get GN signature from attachments (application signature)
+  const getGNApplicationSignature = () => {
+    return application.attachments.find(doc => 
+      doc.attachmentType === 'CERTIFY_SIGNATURE'
+    );
+  };
+
   // Safe date formatting function
   const formatDate = (dateString: string | Date | undefined | null) => {
     if (!dateString) return 'Invalid date';
@@ -1576,6 +380,8 @@ const loadDocumentsAndLogs = async (appId: string) => {
       </div>
     );
   }
+
+  const gnApplicationSignature = getGNApplicationSignature();
 
   return (
     <div className="container mx-auto p-6 space-y-6 animate-fade-in">
@@ -1638,6 +444,12 @@ const loadDocumentsAndLogs = async (appId: string) => {
                   <Label className="text-sm font-medium text-muted-foreground">Administrative Division</Label>
                   <Badge variant="outline">{application.user.division?.name || 'Unknown Division'}</Badge>
                 </div>
+                {gnUser?.additionalData?.nic && (
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">GN NIC</Label>
+                    <p className="font-mono text-sm">{gnUser.additionalData.nic}</p>
+                  </div>
+                )}
               </div>
               
               {application.applicationType === 'new_nic' && (
@@ -1741,18 +553,14 @@ const loadDocumentsAndLogs = async (appId: string) => {
                 </TabsList>
                 
                 <TabsContent value="documents" className="space-y-4">
-                  {isLoadingDocs ? (
-                    <div className="text-center py-8">
-                      <LoadingSpinner size="sm" />
-                    </div>
-                  ) : documents.length === 0 ? (
+                  { application.attachments.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>No documents uploaded</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {documents.map((doc) => (
+                      {application.attachments.filter((doc) => doc.attachmentType !== 'CERTIFY_SIGNATURE').map((doc) => (
                         <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg">
                           <div className="flex items-center space-x-3">
                             {getDocumentTypeIcon(doc.fileName, doc.attachmentType)}
@@ -1810,58 +618,121 @@ const loadDocumentsAndLogs = async (appId: string) => {
 
         {/* Action Panel */}
         <div className="space-y-6">
+          {/* GN Signature Verification */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <PenTool className="h-5 w-5" />
-                 <span>GN Signature Verification</span>
-               </CardTitle>
-               <CardDescription>
-                 Compare the GN's signature on the application with their registered signature
-               </CardDescription>
-             </CardHeader>
-             <CardContent className="space-y-4">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div>
-                   <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-                     Registered GN Signature
-                   </Label>
-                  <div className="border rounded-lg p-4 bg-gray-50 min-h-[120px] flex items-center justify-center">
-                     <div className="text-center">
-                       <PenTool className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                       <p className="text-sm text-gray-500">GN Registered Signature</p>
-                       <p className="text-xs text-gray-400 mt-1">
-                         {application.user.firstName}
-                       </p>
-                     </div>
-                   </div>
-                 </div>
+                <span>GN Signature Verification</span>
+              </CardTitle>
+              <CardDescription>
+                Compare the GN's signature on the application with their registered signature
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                {/* Registered GN Signature */}
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground mb-2 block">
+                    Registered GN Signature
+                  </Label>
+                  <div className="border rounded-lg p-4 bg-gray-50 min-h-[200px] flex items-center justify-center">
+                    {gnUser?.additionalData?.signatureUrl ? (
+                      <div className="text-center w-full">
+                        <img 
+                          src={`${API_BASE_URL}${gnUser.additionalData.signatureUrl}`}
+                          alt="Registered GN Signature"
+                          className="mx-auto mb-2 border rounded"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const fallback = target.nextElementSibling as HTMLElement;
+                            if (fallback) {
+                              fallback.classList.remove('hidden');
+                            }
+                          }}
+                        />
+                        <div className="hidden text-center">
+                          <PenTool className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500">Signature not available</p>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {gnUser.firstName} {gnUser.lastName}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <PenTool className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">No registered signature</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {gnUser?.firstName} {gnUser?.lastName}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 
-                 <div>
-                   <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-                     Application Signature
-                   </Label>
-                   <div className="border rounded-lg p-4 bg-white min-h-[120px] flex items-center justify-center">
-                     <div className="text-center">
-                       <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                       <p className="text-sm text-green-700">Signature Applied</p>
-                       <p className="text-xs text-gray-500 mt-1">
-                         {format(new Date(application.updatedAt), 'MMM d, yyyy h:mm a')}
-                       </p>
-                     </div>
-                   </div>
-                 </div>
-               </div>
+                {/* Application Signature */}
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground mb-2 block">
+                    Application Signature
+                  </Label>
+                  <div className="border rounded-lg p-4 bg-white min-h-[200px] flex items-center justify-center">
+                    {gnApplicationSignature ? (
+                      <div className="text-center w-full">
+                        <img 
+                          src={`${API_BASE_URL}${gnApplicationSignature.fileUrl}`}
+                          alt="Application Signature"
+                          className=" mx-auto mb-2 border rounded"
+                          onError={(e) => {
+                            console.log('Error loading application signature image', e);
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const fallback = target.nextElementSibling as HTMLElement;
+                            if (fallback) {
+                              fallback.classList.remove('hidden');
+                            }
+                          }}
+                        />
+                        <div className="hidden text-center">
+                          <PenTool className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500">Signature not available</p>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formatDate(gnApplicationSignature.createdAt)}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <XCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
+                        <p className="text-sm text-red-600">No application signature found</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
               
-               <Alert>
-                 <CheckCircle className="h-4 w-4" />
-                 <AlertDescription>
-                   <strong>Signature Status:</strong> The signatures match and the GN verification is authentic.
-                   You can proceed with sending this application to DRP.
-                 </AlertDescription>
-               </Alert>
-             </CardContent>
-           </Card>
+              {gnUser?.additionalData?.signatureUrl && gnApplicationSignature ? (
+                <Alert>
+                  <CheckCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Signature Status:</strong> Both registered and application signatures are available for verification.
+                    Please visually compare the signatures before proceeding.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Signature Warning:</strong> {!gnUser?.additionalData?.signatureUrl && 'Registered signature is missing. '}
+                    {!gnApplicationSignature && 'Application signature is missing. '}
+                    Please verify signature status before approval.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Current Status */}
           <Card>
             <CardHeader>
