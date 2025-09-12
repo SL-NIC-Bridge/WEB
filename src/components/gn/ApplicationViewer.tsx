@@ -201,7 +201,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                   <p className="text-base font-medium">{application.user?.firstName} {application.user?.lastName}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Application Type</label>
+                  <label className="text-sm font-medium text-muted-foreground">Application Type</label> 
                   <Badge variant={application.applicationType === 'new_nic' ? 'default' : 'secondary'}>
                     {application.applicationType === 'new_nic' ? 'New NIC Application' : 'Document Verification'}
                   </Badge>
