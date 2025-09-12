@@ -8,7 +8,8 @@ type AuthAction =
   | { type: 'AUTH_SUCCESS'; payload: User }
   | { type: 'AUTH_ERROR'; payload: string }
   | { type: 'LOGOUT' }
-  | { type: 'CLEAR_ERROR' };
+  | { type: 'CLEAR_ERROR' }
+  | { type: 'SET_LOADING'; payload: boolean };
 
 const initialState: AuthState = {
   user: null,
@@ -21,6 +22,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case 'AUTH_START':
       return { ...state, isLoading: true, error: null };
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload };
     case 'AUTH_SUCCESS':
       return { 
         ...state, 
@@ -38,7 +41,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         error: action.payload 
       };
     case 'LOGOUT':
-      return initialState;
+      return { ...initialState, isLoading: false };
     case 'CLEAR_ERROR':
       return { ...state, error: null };
     default:
@@ -51,6 +54,7 @@ interface AuthContextType {
   login: (credentials: LoginRequest) => Promise<boolean>;
   logout: () => void;
   clearError: () => void;
+  checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -62,25 +66,45 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
+  const checkAuth = async () => {
+    const token = localStorage.getItem('accessToken');
+    const refreshToken = localStorage.getItem('refreshToken');
+    
+    if (!token || !refreshToken) {
+      dispatch({ type: 'LOGOUT' });
+      return;
+    }
+
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      const user = await authApiService.getCurrentUser();
+      dispatch({ type: 'AUTH_SUCCESS', payload: user });
+    } catch (error) {
+      // Token is invalid, clear everything
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      dispatch({ type: 'AUTH_ERROR', payload: 'Session expired' });
+      console.error('Auth check failed:', error);
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  };
+
   useEffect(() => {
     // Check if user is already authenticated on app start
-    const checkAuth = async () => {
-      const token = localStorage.getItem('accessToken');
-      if (token) {
-        try {
-          dispatch({ type: 'AUTH_START' });
-          const user = await authApiService.getCurrentUser();
-          dispatch({ type: 'AUTH_SUCCESS', payload: user });
-        } catch (error) {
-          // Token is invalid, remove it
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          dispatch({ type: 'AUTH_ERROR', payload: 'Session expired' });
-        }
-      }
+    checkAuth();
+
+    // Listen for logout events from the API service
+    const handleLogout = () => {
+      dispatch({ type: 'LOGOUT' });
+      toast.info('Session expired. Please login again.');
     };
 
-    checkAuth();
+    window.addEventListener('auth:logout', handleLogout);
+
+    return () => {
+      window.removeEventListener('auth:logout', handleLogout);
+    };
   }, []);
 
   const login = async (credentials: LoginRequest): Promise<boolean> => {
@@ -103,13 +127,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    // Remove tokens
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    
-    dispatch({ type: 'LOGOUT' });
-    toast.info('Logged out successfully');
+  const logout = async () => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      await authApiService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      dispatch({ type: 'LOGOUT' });
+      toast.info('Logged out successfully');
+    }
   };
 
   const clearError = () => {
@@ -117,7 +144,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ state, login, logout, clearError }}>
+    <AuthContext.Provider value={{ state, login, logout, clearError, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );
