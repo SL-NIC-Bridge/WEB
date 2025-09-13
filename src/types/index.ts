@@ -107,6 +107,11 @@ export interface Application {
       code:string;
       name: string;
     };
+    additionalData?: {
+      nic?: string;
+      signature?: string;
+      [key: string]: any;
+    };
   };
   attachments: {
     id: string;
