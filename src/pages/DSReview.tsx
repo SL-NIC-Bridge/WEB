@@ -664,9 +664,9 @@ const DSReview: React.FC = () => {
                       <div className="text-center">
                         <PenTool className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-500">No registered signature</p>
-                        <p className="text-xs text-gray-400 mt-1">
+                        {/* <p className="text-xs text-gray-400 mt-1">
                           {gnUser?.firstName} {gnUser?.lastName}
-                        </p>
+                        </p> */}
                       </div>
                     )}
                   </div>
