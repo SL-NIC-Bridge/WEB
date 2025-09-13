@@ -221,8 +221,8 @@ const handleStatusUpdate = async (status: string, comment?: string) => {
           <div className="flex items-center space-x-3 mb-4">
             <Users className="h-8 w-8 text-primary" />
             <div>
-              <h1 className="text-3xl font-bold text-gray-700">GN Management</h1>
-              <p className="text-gray-600">Review and approve Grama Niladhari registrations</p>
+              <h1 className="text-3xl font-bold">GN Management</h1>
+              <p className="text-gray-400">Review and approve Grama Niladhari registrations</p>
             </div>
           </div>
 
