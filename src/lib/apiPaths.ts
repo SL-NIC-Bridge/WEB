@@ -80,7 +80,7 @@ USERS: {
   // Audit log endpoints
   AUDIT_LOGS: {
     BASE: '/audit-logs',
-    GET_BY_APPLICATION: (applicationId: string) => `/audit-logs/application/${applicationId}`,
+    GET_BY_APPLICATION: (applicationId: string) => `/applications/${applicationId}/audit-logs`,
   },
 
   // Notification endpoints
