@@ -23,7 +23,8 @@ import {
   Clock,
   User,
   RefreshCw,
-  Send
+  Send,
+  PenTool
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -45,6 +46,7 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   const [currentApplication, setCurrentApplication] = useState(application);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [showCommentStep, setShowCommentStep] = useState(false);
   const [signatureCompleted, setSignatureCompleted] = useState(false);
   const [pendingSignatureData, setPendingSignatureData] = useState<{
@@ -58,7 +60,21 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Check if application is already signed
-  const isApplicationSigned = !!(currentApplication as any).signedPdfUrl || !!(currentApplication as any).signed || signatureCompleted;
+  const isApplicationSigned = currentApplication.attachments.find(doc => doc.attachmentType === 'CERTIFY_SIGNATURE') || signatureCompleted;
+
+  // Define allowed status transitions
+  const getAllowedStatusTransitions = (currentStatus: ApplicationStatus): ApplicationStatus[] => {
+    switch (currentStatus) {
+      case ApplicationStatus.SUBMITTED:
+        return [ApplicationStatus.APPROVED_BY_GN, ApplicationStatus.REJECTED_BY_GN];
+      case ApplicationStatus.APPROVED_BY_GN:
+        return [ApplicationStatus.REJECTED_BY_GN];
+      default:
+        return [];
+    }
+  };
+
+  const allowedNextStatuses = getAllowedStatusTransitions(currentApplication.currentStatus);
 
   const refreshApplicationData = useCallback(async () => {
     setIsRefreshing(true);
@@ -234,6 +250,142 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
     setStatusComment('');
   };
 
+  const handleSign = async (signatureDataUrl: string, signatureFile?: File) => {
+    setIsUpdatingStatus(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("applicationId", application.id.toString());
+
+      if (signatureFile) {
+        // if user uploaded a file
+        formData.append("signature", signatureFile);
+      } else {
+        // fallback: convert dataURL to File
+        const res = await fetch(signatureDataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], "signature.png", { type: blob.type || "image/png" });
+        formData.append("signature", file);
+      }
+
+      const updated = await applicationApiService.signApplication(application.id, formData);
+      const updatedApp: Application = (updated as any).data || updated;
+
+      onUpdate(updatedApp);
+      setIsSignatureModalOpen(false);
+      toast.success("Document signed successfully");
+    } catch (err) {
+      console.error("Sign failed", err);
+      toast.error("Failed to sign document");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const getDocumentTypeIcon = (fileName: string, attachmentType?: string) => {
+    const lowerFileName = fileName.toLowerCase();
+    const lowerAttachmentType = (attachmentType || "").toLowerCase();
+
+    if (
+      lowerFileName.includes("birth") ||
+      lowerFileName.includes("certificate") ||
+      lowerAttachmentType.includes("birth") ||
+      lowerAttachmentType.includes("certificate")
+    ) {
+      return <FileText className="h-6 w-6 text-blue-600" />;
+    } else if (
+      lowerFileName.includes("signature") ||
+      lowerAttachmentType.includes("signature")
+    ) {
+      return <PenTool className="h-6 w-6 text-purple-600" />;
+    } else if (
+      lowerFileName.includes("photo") ||
+      lowerFileName.includes("id") ||
+      lowerFileName.includes(".jpg") ||
+      lowerFileName.includes(".png") ||
+      lowerAttachmentType.includes("photo")
+    ) {
+      return <ImageIcon className="h-6 w-6 text-green-600" />;
+    } else {
+      return <FileText className="h-6 w-6 text-gray-600" />;
+    }
+  };
+
+  const getDocumentTypeName = (fileName: string, attachmentType?: string) => {
+    const lowerFileName = fileName.toLowerCase();
+    const lowerAttachmentType = (attachmentType || "").toLowerCase();
+
+    if (
+      lowerFileName.includes("birth") ||
+      lowerFileName.includes("certificate") ||
+      lowerAttachmentType.includes("birth") ||
+      lowerAttachmentType.includes("certificate")
+    ) {
+      return "Birth Certificate";
+    } else if (
+      lowerFileName.includes("signature") ||
+      lowerAttachmentType.includes("signature")
+    ) {
+      return "Digital Signature";
+    } else if (
+      lowerFileName.includes("photo") ||
+      lowerFileName.includes("png") ||
+      lowerFileName.includes("jpg")
+    ) {
+      return "Supporting Photograph";
+    } else if (lowerFileName.includes(".pdf")) {
+      return "Supporting Document";
+    } else {
+      return "Other";
+    }
+  };
+
+  // Legacy status update handler - kept for backwards compatibility
+  const handleStatusUpdate = async (newStatus: ApplicationStatus) => {
+    if ((newStatus === ApplicationStatus.REJECTED_BY_GN) && !statusComment.trim()) {
+      toast.error('Please provide a reason for rejection');
+      return;
+    }
+
+    setIsUpdatingStatus(true);
+    try {
+      const payload = { status: newStatus, comment: statusComment };
+      const updated = await applicationApiService.updateApplicationStatus(currentApplication.id, payload as any);
+      const updatedApp = (updated as any).data || updated;
+      setCurrentApplication(updatedApp);
+      onUpdate(updatedApp);
+      setStatusComment('');
+      toast.success('Application status updated');
+    } catch (err) {
+      console.error('Failed to update status', err);
+      toast.error('Failed to update application status');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const getStatusActions = () => {
+    return allowedNextStatuses.map((status) => {
+      if (status === ApplicationStatus.APPROVED_BY_GN) {
+        return (
+          <Button key={String(status)} variant="default" onClick={() => handleStatusUpdate(status)} disabled={isUpdatingStatus}>
+            <CheckCircle className="mr-2 h-4 w-4" /> Confirm & Approve
+          </Button>
+        );
+      }
+
+      if (status === ApplicationStatus.REJECTED_BY_GN) {
+        return (
+          <Button key={String(status)} variant="destructive" onClick={() => handleStatusUpdate(status)} disabled={isUpdatingStatus}>
+            <XCircle className="mr-2 h-4 w-4" /> Reject Application
+          </Button>
+        );
+      }
+
+      return null;
+    });
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6 animate-fade-in">
       {/* Header */}
@@ -330,16 +482,12 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                   ) : (
                     <div className="space-y-2">
                       {documents.filter((doc) => doc.attachmentType !== 'CERTIFY_SIGNATURE').map((doc: any) => (
-                        <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
                           <div className="flex items-center space-x-3">
-                            {((doc.fileType || '').toLowerCase() === 'pdf' || (doc.fileUrl || '').toLowerCase().endsWith('.pdf')) ? (
-                              <FileText className="h-8 w-8 text-red-600" />
-                            ) : (
-                              <ImageIcon className="h-8 w-8 text-blue-600" />
-                            )}
+                            {getDocumentTypeIcon(doc.fileName, doc.attachmentType)}
                             <div>
                               <p className="font-medium">
-                                {doc.fileType === 'pdf' ? 'Birth Certificate (PDF)' : 'Supporting Photo'}
+                                {getDocumentTypeName(doc.fileName, doc.attachmentType)}
                               </p>
                               <p className="text-sm text-muted-foreground">
                                 Uploaded {format(new Date(doc.uploadedAt || doc.createdAt || doc.created_at), 'MMM d, yyyy h:mm a')}
@@ -562,34 +710,31 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {auditLogs.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No status changes yet</p>
-                ) : (
-                  auditLogs.map((log, index) => (
-                    <div key={log.id} className="flex space-x-3">
-                      <div className="flex flex-col items-center">
-                        <div className="w-2 h-2 bg-primary rounded-full" />
-                        {index < auditLogs.length - 1 && (
-                          <div className="w-px h-8 bg-border mt-2" />
-                        )}
-                      </div>
-                      <div className="flex-1 pb-4">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <StatusBadge status={log.status} size="sm" />
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(log.createdAt), 'MMM d, h:mm a')}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-1">
-                          {log.comment}
-                        </p>
-                        <p className="text-xs text-muted-foreground flex items-center">
-                          <User className="h-3 w-3 mr-1" />
-                          {log.userName}
-                        </p>
-                      </div>
+                {auditLogs.map((log, index) => (
+                  <div key={log.id} className="flex space-x-3">
+                    <div className="flex flex-col items-center mt-2">
+                      <div className="w-2 h-2 bg-primary rounded-full" />
+                      {index < auditLogs.length - 1 && (
+                        <div className="w-px h-8 bg-border mt-2" />
+                      )}
                     </div>
-                  ))
+                    <div className="flex-1 pb-4">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <StatusBadge status={log.status} size="sm" />
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(log.createdAt), 'MMM d, h:mm a')}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        {log.comment}
+                      </p>
+                      <p className="text-xs text-muted-foreground flex items-center">
+                        <User className="h-3 w-3 mr-1" />
+                        {log.actor?.firstName + " " + log.actor?.lastName || "System"}
+                      </p>
+                    </div>
+                  </div>
+                  )
                 )}
               </div>
             </CardContent>
