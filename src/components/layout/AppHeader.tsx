@@ -16,8 +16,12 @@ import { Moon, Sun, LogOut, User, Settings } from 'lucide-react';
 
 const AppHeader: React.FC = () => {
   const { state: authState, logout } = useAuth();
-  const { theme, setTheme, actualTheme } = useTheme();
+  const { setTheme, actualTheme } = useTheme();
   const { user } = authState;
+
+  const isActivePathClassname = (path: string) => {
+    return window.location.pathname === path ? 'text-primary font-medium' : 'text-muted-foreground hover:text-accent-foreground font-medium';
+  }
 
   const toggleTheme = () => {
     setTheme(actualTheme === 'dark' ? 'light' : 'dark');
@@ -47,47 +51,48 @@ const AppHeader: React.FC = () => {
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center">
-              <span className="text-white font-bold text-sm">EC</span>
+              <span className="text-white font-bold text-sm">NIC</span>
             </div>
             <div>
-              <h1 className="text-lg font-semibold">E-Certification Portal</h1>
+              <h1 className="text-lg font-semibold">E-NIC Portal</h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
                 Document Verification System
               </p>
             </div>
           </div>
+          </div>
           
           {/* Navigation */}
           {user && (
-            <nav className="hidden md:flex items-center space-x-6 ml-8">
+            <nav className="hidden md:flex items-center space-x-8">
               {user.role === 'DS' ? (
                 <>
-                  <Link to="/ds" className="text-sm font-medium hover:text-primary transition-colors">
+                  <Link to="/ds" className={isActivePathClassname('/ds')}>
                     Dashboard
                   </Link>
                   {/* <Link to="/ds#review" className="text-sm font-medium hover:text-primary transition-colors">
                     Review Queue
                   </Link> */}
-                  <Link to="/ds/gn-management" className="text-sm font-medium hover:text-primary transition-colors">
+                  <Link to="/ds/gn-management" className={isActivePathClassname('/ds/gn-management')}>
                     GN Management
                   </Link>
-                  <Link to="/ds/create-division" className="text-sm font-medium hover:text-primary transition-colors">
-                    Create Division
+                  <Link to="/ds/create-division" className={isActivePathClassname('/ds/create-division')}>
+                    Division Management
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link to="/gn" className="text-sm font-medium hover:text-primary transition-colors">
+                  <Link to="/gn" className={isActivePathClassname('/gn')}>
                     Dashboard
                   </Link>
-                  <Link to="/gn/applications" className="text-sm font-medium hover:text-primary transition-colors">
+                  <Link to="/gn/applications" className={isActivePathClassname('/gn/applications')}>
                     Applications
                   </Link>
                 </>
               )}
             </nav>
           )}
-        </div>
+        
 
         {/* User Actions */}
         <div className="flex items-center space-x-4">
@@ -129,9 +134,9 @@ const AppHeader: React.FC = () => {
                       <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
                         {getRoleDisplayName(user.role)}
                       </Badge>
-                      {user.gnDivisionName && (
+                      {user.division && (
                         <Badge variant="outline" className="text-xs">
-                          {user.gnDivisionName}
+                          {user.division.name}
                         </Badge>
                       )}
                     </div>
