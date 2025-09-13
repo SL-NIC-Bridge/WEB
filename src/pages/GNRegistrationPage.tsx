@@ -12,7 +12,6 @@ import { toast } from 'sonner';
 import GNSignatureCanvas from '@/components/gn/SignatureCanvas';
 import { type GnDivision, type CreateGnForm, UserRole } from '@/types';
 import { divisionApiService, userApiService } from '@/services/apiServices';
-import * as bcrypt from 'bcryptjs';
 
 const GNRegistration: React.FC = () => {
   const navigate = useNavigate();
