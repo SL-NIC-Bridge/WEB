@@ -103,7 +103,7 @@ export interface Application {
     lastName: string;
     email: string;
     phone: string;
-      division?: {
+    division?: {
       code:string;
       name: string;
     };
