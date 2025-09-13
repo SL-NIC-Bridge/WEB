@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Application, ApplicationStatus, ApplicationType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,13 +21,14 @@ import {
   XCircle,
   Signature,
   Clock,
-  User
+  User,
+  RefreshCw,
+  Send
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
-const API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL; // Change this to your local backend URL
-
+const API_BASE_URL = import.meta.env.VITE_APP_API_BASE_URL;
 
 interface ApplicationViewerProps {
   application: Application;
@@ -40,30 +41,76 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
   onBack,
   onUpdate
 }) => {
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [statusComment, setStatusComment] = useState('');
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+  const [currentApplication, setCurrentApplication] = useState(application);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCommentStep, setShowCommentStep] = useState(false);
+  const [signatureCompleted, setSignatureCompleted] = useState(false);
+  const [pendingSignatureData, setPendingSignatureData] = useState<{
+    dataUrl: string;
+    file?: File;
+  } | null>(null);
 
   const [documents, setDocuments] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Check if application is already signed
+  const isApplicationSigned = !!(currentApplication as any).signedPdfUrl || !!(currentApplication as any).signed || signatureCompleted;
+
+  const refreshApplicationData = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const freshApp = await applicationApiService.getApplicationById(currentApplication.id);
+      const updatedApp = (freshApp as any).data || freshApp;
+      
+      setCurrentApplication(updatedApp);
+      onUpdate(updatedApp);
+      
+      const [docs, logs] = await Promise.all([
+        documentApiService.getDocumentsForApplication(currentApplication.id),
+        auditLogApiService.getAuditLogsForApplication(currentApplication.id)
+      ]);
+      
+      setDocuments(docs || []);
+      setAuditLogs(logs || []);
+      
+    } catch (error) {
+      console.error('Failed to refresh application data:', error);
+      toast.error('Failed to refresh application data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [currentApplication.id, onUpdate]);
+
+  useEffect(() => {
+    setCurrentApplication(application);
+    // Check if already signed
+    if ((application as any).signedPdfUrl || (application as any).signed) {
+      setSignatureCompleted(true);
+    }
+  }, [application]);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       setIsLoadingDocs(true);
       try {
-        // try documents endpoint first
-        const docs = await documentApiService.getDocumentsForApplication(application.id);
-        const logs = await auditLogApiService.getAuditLogsForApplication(application.id);
+        const [docs, logs] = await Promise.all([
+          documentApiService.getDocumentsForApplication(currentApplication.id),
+          auditLogApiService.getAuditLogsForApplication(currentApplication.id)
+        ]);
+        
         if (!mounted) return;
+        
         setDocuments(docs || []);
         setAuditLogs(logs || []);
       } catch (err) {
         console.error('Failed to load documents/audit logs', err);
-        // fallback to attachments on application object if available
         if (mounted) {
-          setDocuments((application as any).attachments || []);
+          setDocuments((currentApplication as any).attachments || []);
           setAuditLogs([]);
         }
       } finally {
@@ -72,100 +119,119 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
     };
     load();
     return () => { mounted = false; };
-  }, [application.id]);
+  }, [currentApplication.id]);
 
-  const allowedNextStatuses = getAllowedStatusTransitions(application.currentStatus);
+  // Handle signature from canvas - just store it and show comment step
+  const handleSignatureCapture = async(signatureDataUrl: string, signatureFile?: File) => {
+    console.log('Signature captured, showing comment step...');
+    setPendingSignatureData({ dataUrl: signatureDataUrl, file: signatureFile });
+    setShowCommentStep(true);
+    setIsSignatureModalOpen(false);
+    toast.success("Signature captured! Now add your comment and submit.");
+  };
 
-  function getAllowedStatusTransitions(currentStatus: ApplicationStatus): ApplicationStatus[] {
-    // Simplified transitions tailored to backend ApplicationStatus enum
-    //console.log('currentStatus', currentStatus);
-    switch (currentStatus) {
-      case ApplicationStatus.SUBMITTED:
-        return [ApplicationStatus.APPROVED_BY_GN, ApplicationStatus.REJECTED_BY_GN];
-      case ApplicationStatus.APPROVED_BY_GN:
-        return [ApplicationStatus.REJECTED_BY_GN];
-      default:
-        return [];
+  // Handle the complete submission (sign + comment + status)
+  const handleCompleteSubmission = async (newStatus: ApplicationStatus) => {
+    if (!statusComment.trim()) {
+      toast.error('Please provide a comment');
+      return;
     }
-  }
 
-  const handleStatusUpdate = async (newStatus: ApplicationStatus) => {
-    if ((newStatus === ApplicationStatus.REJECTED_BY_GN) && !statusComment.trim()) {
+    if (newStatus === ApplicationStatus.APPROVED_BY_GN && !pendingSignatureData && !isApplicationSigned) {
+      toast.error('Signature is required for approval');
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      let updatedApp = currentApplication;
+      
+      // Step 1: Sign the document if we have pending signature data
+      if (pendingSignatureData) {
+        console.log('Submitting signature...');
+        const formData = new FormData();
+        formData.append("applicationId", currentApplication.id.toString());
+
+        if (pendingSignatureData.file) {
+          formData.append("signature", pendingSignatureData.file);
+        } else {
+          const res = await fetch(pendingSignatureData.dataUrl);
+          const blob = await res.blob();
+          const file = new File([blob], "signature.png", { type: blob.type || "image/png" });
+          formData.append("signature", file);
+        }
+
+        const signResponse = await applicationApiService.signApplication(currentApplication.id, formData);
+        updatedApp = (signResponse as any).data || signResponse;
+        
+        console.log('Signature submitted successfully');
+        setSignatureCompleted(true);
+        setPendingSignatureData(null);
+      }
+
+      // Step 2: Update the status with comment
+      console.log('Updating status to:', newStatus);
+      const statusPayload = { status: newStatus, comment: statusComment };
+      const statusResponse = await applicationApiService.updateApplicationStatus(currentApplication.id, statusPayload as any);
+      updatedApp = (statusResponse as any).data || statusResponse;
+
+      // Step 3: Update state and UI
+      setCurrentApplication(updatedApp);
+      onUpdate(updatedApp);
+      setStatusComment('');
+      setShowCommentStep(false);
+      
+      const statusText = newStatus === ApplicationStatus.APPROVED_BY_GN ? 'approved' : 'rejected';
+      toast.success(`Application ${statusText} successfully!`);
+      
+      // Refresh data to get updated audit logs
+      setTimeout(() => {
+        refreshApplicationData();
+      }, 1000);
+      
+    } catch (err) {
+      console.error('Submission failed:', err);
+      toast.error('Failed to process application. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle rejection without signature
+  const handleRejectWithoutSignature = async () => {
+    if (!statusComment.trim()) {
       toast.error('Please provide a reason for rejection');
       return;
     }
 
-    setIsUpdatingStatus(true);
+    setIsSubmitting(true);
     try {
-      const payload = { status: newStatus, comment: statusComment };
-      const updated = await applicationApiService.updateApplicationStatus(application.id, payload as any);
-      // updated may be ApiResponse-wrapped or raw Application
-      const updatedApp: Application = (updated as any).data || updated;
+      const payload = { status: ApplicationStatus.REJECTED_BY_GN, comment: statusComment };
+      const updated = await applicationApiService.updateApplicationStatus(currentApplication.id, payload as any);
+      const updatedApp = (updated as any).data || updated;
+      
+      setCurrentApplication(updatedApp);
       onUpdate(updatedApp);
       setStatusComment('');
-      toast.success('Application status updated');
+      
+      toast.success('Application rejected successfully');
+      
+      setTimeout(() => {
+        refreshApplicationData();
+      }, 1000);
     } catch (err) {
-      console.error('Failed to update status', err);
-      toast.error('Failed to update application status');
+      console.error('Failed to reject application:', err);
+      toast.error('Failed to reject application');
     } finally {
-      setIsUpdatingStatus(false);
+      setIsSubmitting(false);
     }
   };
 
-
-  const handleSign = async (signatureDataUrl: string, signatureFile?: File) => {
-  setIsUpdatingStatus(true);
-
-  try {
-    const formData = new FormData();
-    formData.append("applicationId", application.id.toString());
-
-    if (signatureFile) {
-      // if user uploaded a file
-      formData.append("signature", signatureFile);
-    } else {
-      // fallback: convert dataURL to File
-      const res = await fetch(signatureDataUrl);
-      const blob = await res.blob();
-      const file = new File([blob], "signature.png", { type: blob.type || "image/png" });
-      formData.append("signature", file);
-    }
-
-    const updated = await applicationApiService.signApplication(application.id, formData);
-    const updatedApp: Application = (updated as any).data || updated;
-
-    onUpdate(updatedApp);
-    setIsSignatureModalOpen(false);
-    toast.success("Document signed successfully");
-  } catch (err) {
-    console.error("Sign failed", err);
-    toast.error("Failed to sign document");
-  } finally {
-    setIsUpdatingStatus(false);
-  }
-};
-
-
-  const getStatusActions = () => {
-    return allowedNextStatuses.map((status) => {
-      if (status === ApplicationStatus.APPROVED_BY_GN) {
-        return (
-          <Button key={String(status)} variant="default" onClick={() => handleStatusUpdate(status)} disabled={isUpdatingStatus}>
-            <CheckCircle className="mr-2 h-4 w-4" /> Confirm & Approve
-          </Button>
-        );
-      }
-
-      if (status === ApplicationStatus.REJECTED_BY_GN) {
-        return (
-          <Button key={String(status)} variant="destructive" onClick={() => handleStatusUpdate(status)} disabled={isUpdatingStatus}>
-            <XCircle className="mr-2 h-4 w-4" /> Reject Application
-          </Button>
-        );
-      }
-
-      return null;
-    });
+  const resetSignatureFlow = () => {
+    setPendingSignatureData(null);
+    setShowCommentStep(false);
+    setStatusComment('');
   };
 
   return (
@@ -179,11 +245,20 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
         <div className="flex-1">
           <h1 className="text-2xl font-bold">Application Details</h1>
           <p className="text-muted-foreground">
-            ID: {application.id.split('-').pop()?.toUpperCase()} • 
-            Submitted {application.createdAt && format((application.createdAt as any), 'MMM d, yyyy h:mm a')}
+            ID: {currentApplication.id.split('-').pop()?.toUpperCase()} • 
+            Submitted {currentApplication.createdAt && format((currentApplication.createdAt as any), 'MMM d, yyyy h:mm a')}
           </p>
         </div>
-  <StatusBadge status={application.currentStatus} size="lg" />
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={refreshApplicationData}
+          disabled={isRefreshing}
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+        <StatusBadge status={currentApplication.currentStatus} size="lg" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -198,29 +273,25 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Full Name</label>
-                  <p className="text-base font-medium">{application.user?.firstName} {application.user?.lastName}</p>
+                  <p className="text-base font-medium">{currentApplication.user?.firstName} {currentApplication.user?.lastName}</p>
                 </div>
-                <div >
+                <div>
                   <label className="text-sm font-medium text-muted-foreground mr-4">Application Type</label> 
-                  <Badge variant={application.applicationType === 'new_nic' ? 'default' : 'secondary'}>
-                    {application.applicationType === 'new_nic' ? 'New NIC Application' : 'Document Verification'}
+                  <Badge variant={currentApplication.applicationType === 'new_nic' ? 'default' : 'secondary'}>
+                    {currentApplication.applicationType === 'new_nic' ? 'New NIC Application' : 'Document Verification'}
                   </Badge>
                 </div>
-                {(application.applicationData && (application.applicationData.nic || (application as any).applicantNic)) && (
+                {(currentApplication.applicationData && (currentApplication.applicationData.nic || (currentApplication as any).applicantNic)) && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">NIC Number</label>
-                    <p className="text-base font-mono">{application.applicationData?.nic || (application as any).applicantNic}</p>
+                    <p className="text-base font-mono">{currentApplication.applicationData?.nic || (currentApplication as any).applicantNic}</p>
                   </div>
                 )}
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Phone Number</label>
-                  <p className="text-base">{application.user?.phone || (application as any).applicantPhone}</p>
+                  <p className="text-base">{currentApplication.user?.phone || (currentApplication as any).applicantPhone}</p>
                 </div>
-                {/* <div>
-                  <label className="text-sm font-medium text-muted-foreground">Administrative Area</label>
-                  <Badge variant="outline">{application.user?.division?.name || (application as any).applicantDivision}</Badge>
-                </div> */}
-                {application.applicationType === 'new_nic' && (
+                {currentApplication.applicationType === 'new_nic' && (
                   <div className="md:col-span-2">
                     <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                       <p className="text-sm text-blue-800 dark:text-blue-200">
@@ -244,7 +315,6 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
               <Tabs defaultValue="documents" className="w-full">
                 <TabsList>
                   <TabsTrigger value="documents">Documents</TabsTrigger>
-                  {/* <TabsTrigger value="preview">Preview</TabsTrigger> */}
                 </TabsList>
                 
                 <TabsContent value="documents" className="space-y-4">
@@ -281,17 +351,13 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                               <Eye className="mr-2 h-4 w-4" />
                               View
                             </Button>
-                            {/* <Button variant="outline" size="sm" onClick={() => window.open(doc.fileUrl || doc.fileUrl, '_blank')}>
-                              <Download className="mr-2 h-4 w-4" />
-                              Download
-                            </Button> */}
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => {
                                 const link = document.createElement('a');
                                 link.href = API_BASE_URL+doc.fileUrl;
-                                link.setAttribute('download', ''); // optional: you can pass a filename like 'document.pdf'
+                                link.setAttribute('download', '');
                                 document.body.appendChild(link);
                                 link.click();
                                 document.body.removeChild(link);
@@ -306,88 +372,181 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
                     </div>
                   )}
                 </TabsContent>
-                
-                {/* <TabsContent value="preview" className="space-y-4">
-                  <div className="border rounded-lg bg-muted/30 aspect-[4/3] flex items-center justify-center">
-                    <div className="text-center text-muted-foreground">
-                      <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                      <p>Document preview would appear here</p>
-                      <p className="text-sm">PDF and image viewer integration</p>
-                    </div>
-                  </div>
-                </TabsContent> */}
               </Tabs>
             </CardContent>
           </Card>
 
-          {/* Status Actions */}
-          {getAllowedStatusTransitions(application.currentStatus).length > 0 && (
+          {/* Action Section */}
+          {currentApplication.currentStatus === ApplicationStatus.SUBMITTED && (
             <Card>
               <CardHeader>
-                <CardTitle>Actions</CardTitle>
-                <CardDescription>Update application status or add comments</CardDescription>
+                <CardTitle>Review & Decision</CardTitle>
+                <CardDescription>
+                  {showCommentStep 
+                    ? "Signature captured! Now add your comment and make your decision." 
+                    : isApplicationSigned 
+                    ? "Application is signed. Add your comment and make a decision."
+                    : "Sign the document for approval, or reject with comment only."
+                  }
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {(allowedNextStatuses.includes(ApplicationStatus.REJECTED_BY_GN)) && (
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Comment (required for reject)
-                    </label>
-                    <Textarea
-                      placeholder="Provide reason for hold or rejection..."
-                      value={statusComment}
-                      onChange={(e) => setStatusComment(e.target.value)}
-                      rows={3}
-                    />
+              <CardContent className="space-y-6">
+                
+                {/* Show signature preview if we have pending signature */}
+                {pendingSignatureData && (
+                  <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <p className="font-medium text-green-800 dark:text-green-200">Signature Captured</p>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div>
+                        <p className="text-sm text-green-700 dark:text-green-300 mb-2">Signature Preview:</p>
+                        <img 
+                          src={pendingSignatureData.dataUrl} 
+                          alt="Signature Preview" 
+                          className="h-16 border border-green-300 rounded bg-white p-2"
+                        />
+                      </div>
+                      <Button variant="outline" size="sm" onClick={resetSignatureFlow}>
+                        Reset Signature
+                      </Button>
+                    </div>
                   </div>
                 )}
-                
-                <div className="flex flex-wrap gap-2">
-                  {getStatusActions()}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
-          {/* E-Signature Section */}
-          {application.currentStatus === ApplicationStatus.SUBMITTED && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Digital Signature</CardTitle>
-                <CardDescription>Apply your official signature to the document</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    {(application as any).signedPdfUrl ? (
-                      <div className="flex items-center space-x-2 text-green-600">
-                        <CheckCircle className="h-5 w-5" />
-                        <span>Document signed</span>
+                {/* Show current signed status if already signed */}
+                {isApplicationSigned && !pendingSignatureData && (
+                  <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <div>
+                          <p className="font-medium text-green-800 dark:text-green-200">Document Already Signed</p>
+                          <p className="text-sm text-green-700 dark:text-green-300">Ready for decision</p>
+                        </div>
                       </div>
-                    ) : (
-                      <p className="text-muted-foreground">
-                        Document requires your digital signature before confirmation
-                      </p>
-                    )}
+                      {(currentApplication as any).signedPdfUrl && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.open(API_BASE_URL + (currentApplication as any).signedPdfUrl, '_blank')}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Signed Document
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <Dialog open={isSignatureModalOpen} onOpenChange={setIsSignatureModalOpen}>
-                    <DialogTrigger asChild>
-                      <Button 
-                        disabled={!!(application as any).signedPdfUrl}
-                        className="bg-primary hover:bg-primary-hover"
+                )}
+
+                {/* Signature button if not signed and not in comment step */}
+                {!isApplicationSigned && !showCommentStep && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <Signature className="h-5 w-5 text-orange-600" />
+                        <div>
+                          <p className="font-medium text-orange-800 dark:text-orange-200">Sign for Approval</p>
+                          <p className="text-sm text-orange-700 dark:text-orange-300">
+                            Signature required for approval (optional for rejection)
+                          </p>
+                        </div>
+                      </div>
+                      <Dialog open={isSignatureModalOpen} onOpenChange={setIsSignatureModalOpen}>
+                        <DialogTrigger asChild>
+                          <Button>
+                            <Signature className="mr-2 h-4 w-4" />
+                            Sign Document
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>Apply Digital Signature</DialogTitle>
+                          </DialogHeader>
+                          <SignatureCanvas onSign={handleSignatureCapture} />
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </div>
+                )}
+
+                {/* Comment and Action Section */}
+                {(showCommentStep || isApplicationSigned || (!isApplicationSigned && !showCommentStep)) && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">
+                        Review Comments <span className="text-red-500">*</span>
+                      </label>
+                      <Textarea
+                        placeholder="Enter your review comments, reason for decision, or additional notes..."
+                        value={statusComment}
+                        onChange={(e) => setStatusComment(e.target.value)}
+                        rows={4}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Approve Button */}
+                      <Button
+                        onClick={() => handleCompleteSubmission(ApplicationStatus.APPROVED_BY_GN)}
+                        disabled={
+                          isSubmitting || 
+                          !statusComment.trim() || 
+                          (!pendingSignatureData && !isApplicationSigned)
+                        }
+                        className="h-12"
+                        size="lg"
                       >
-                        <Signature className="mr-2 h-4 w-4" />
-                        {(application as any).signedPdfUrl ? 'Signed' : 'Sign Document'}
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        {isSubmitting ? 'Processing...' : 'Approve Application'}
                       </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                      <DialogHeader>
-                        <DialogTitle>Apply Digital Signature</DialogTitle>
-                      </DialogHeader>
-                      <SignatureCanvas onSign={handleSign} />
-                    </DialogContent>
-                  </Dialog>
-                </div>
+
+                      {/* Reject Button */}
+                      <Button
+                        variant="destructive"
+                        onClick={() => {
+                          if (pendingSignatureData) {
+                            handleCompleteSubmission(ApplicationStatus.REJECTED_BY_GN);
+                          } else {
+                            handleRejectWithoutSignature();
+                          }
+                        }}
+                        disabled={isSubmitting || !statusComment.trim()}
+                        className="h-12"
+                        size="lg"
+                      >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        {isSubmitting ? 'Processing...' : 'Reject Application'}
+                      </Button>
+                    </div>
+
+                    {/* Validation Messages */}
+                    <div className="space-y-2">
+                      {!statusComment.trim() && (
+                        <div className="text-sm text-red-600 bg-red-50 dark:bg-red-950/20 p-3 rounded-lg border border-red-200">
+                          <AlertTriangle className="h-4 w-4 inline mr-2" />
+                          Comment is required for both approval and rejection.
+                        </div>
+                      )}
+                      
+                      {statusComment.trim() && !pendingSignatureData && !isApplicationSigned && (
+                        <div className="text-sm text-orange-600 bg-orange-50 dark:bg-orange-950/20 p-3 rounded-lg border border-orange-200">
+                          <AlertTriangle className="h-4 w-4 inline mr-2" />
+                          Sign the document above to enable approval, or reject without signing.
+                        </div>
+                      )}
+                      
+                      {statusComment.trim() && (pendingSignatureData || isApplicationSigned) && (
+                        <div className="text-sm text-green-600 bg-green-50 dark:bg-green-950/20 p-3 rounded-lg border border-green-200">
+                          <CheckCircle className="h-4 w-4 inline mr-2" />
+                          Ready to approve or reject the application.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -403,31 +562,35 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {auditLogs.map((log, index) => (
-                  <div key={log.id} className="flex space-x-3">
-                    <div className="flex flex-col items-center">
-                      <div className="w-2 h-2 bg-primary rounded-full" />
-                      {index < auditLogs.length - 1 && (
-                        <div className="w-px h-8 bg-border mt-2" />
-                      )}
-                    </div>
-                    <div className="flex-1 pb-4">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <StatusBadge status={log.status} size="sm" />
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(log.createdAt), 'MMM d, h:mm a')}
-                        </span>
+                {auditLogs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No status changes yet</p>
+                ) : (
+                  auditLogs.map((log, index) => (
+                    <div key={log.id} className="flex space-x-3">
+                      <div className="flex flex-col items-center">
+                        <div className="w-2 h-2 bg-primary rounded-full" />
+                        {index < auditLogs.length - 1 && (
+                          <div className="w-px h-8 bg-border mt-2" />
+                        )}
                       </div>
-                      <p className="text-sm text-muted-foreground mb-1">
-                        {log.comment}
-                      </p>
-                      <p className="text-xs text-muted-foreground flex items-center">
-                        <User className="h-3 w-3 mr-1" />
-                        {log.userName}
-                      </p>
+                      <div className="flex-1 pb-4">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <StatusBadge status={log.status} size="sm" />
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(log.createdAt), 'MMM d, h:mm a')}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {log.comment}
+                        </p>
+                        <p className="text-xs text-muted-foreground flex items-center">
+                          <User className="h-3 w-3 mr-1" />
+                          {log.userName}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -440,19 +603,25 @@ const ApplicationViewer: React.FC<ApplicationViewerProps> = ({
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Application ID</span>
-                <span className="font-mono text-sm">{application.id.split('-').pop()?.toUpperCase()}</span>
+                <span className="font-mono text-sm">{currentApplication.id.split('-').pop()?.toUpperCase()}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Documents</span>
                 <span className="text-sm">{documents.length} files</span>
               </div>
               <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Signature Status</span>
+                <span className={`text-sm font-medium ${(pendingSignatureData || isApplicationSigned) ? 'text-green-600' : 'text-orange-600'}`}>
+                  {pendingSignatureData ? '✓ Ready' : isApplicationSigned ? '✓ Signed' : '⏳ Pending'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Submitted</span>
-                <span className="text-sm">{application.createdAt && format(new Date(application.createdAt as any), 'MMM d')}</span>
+                <span className="text-sm">{currentApplication.createdAt && format(new Date(currentApplication.createdAt as any), 'MMM d')}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Last Updated</span>
-                <span className="text-sm">{format(new Date(application.updatedAt), 'MMM d')}</span>
+                <span className="text-sm">{format(new Date(currentApplication.updatedAt), 'MMM d')}</span>
               </div>
             </CardContent>
           </Card>
